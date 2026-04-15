@@ -1,5 +1,6 @@
 package com.bushop.sg.ui.components
 
+import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
@@ -15,7 +16,8 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.CloudOff
-import androidx.compose.material.icons.filled.DirectionsBus
+import androidx.compose.material.icons.filled.ExpandLess
+import androidx.compose.material.icons.filled.ExpandMore
 import androidx.compose.material.icons.outlined.Accessibility
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
@@ -23,7 +25,6 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
-import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -33,10 +34,8 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
-import androidx.compose.ui.unit.sp
 import com.bushop.sg.data.model.BusService
 import com.bushop.sg.data.model.toDisplayArrival
 
@@ -48,7 +47,9 @@ fun BusStopCard(
     error: String?,
     isOffline: Boolean,
     lastUpdated: Long = 0L,
+    isCollapsed: Boolean = false,
     onRefresh: () -> Unit,
+    onToggleCollapse: () -> Unit,
     onDelete: () -> Unit,
     modifier: Modifier = Modifier
 ) {
@@ -68,48 +69,69 @@ fun BusStopCard(
                 horizontalArrangement = Arrangement.SpaceBetween,
                 verticalAlignment = Alignment.CenterVertically
             ) {
-                Text(
-                    text = "Bus Stop $busStopCode",
-                    style = MaterialTheme.typography.titleLarge,
-                    fontWeight = FontWeight.Bold
-                )
-                if (isLoading) {
+                Column(modifier = Modifier.weight(1f)) {
                     Text(
-                        text = "Loading...",
-                        style = MaterialTheme.typography.labelMedium,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                        text = "Bus Stop $busStopCode",
+                        style = MaterialTheme.typography.titleLarge,
+                        fontWeight = FontWeight.Bold
                     )
+                    if (services.isNotEmpty()) {
+                        Text(
+                            text = "${services.size} buses",
+                            style = MaterialTheme.typography.labelSmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
+                    }
+                }
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    if (isLoading) {
+                        Text(
+                            text = "Loading...",
+                            style = MaterialTheme.typography.labelMedium,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
+                    }
+                    IconButton(onClick = onToggleCollapse) {
+                        Icon(
+                            imageVector = if (isCollapsed) Icons.Default.ExpandMore else Icons.Default.ExpandLess,
+                            contentDescription = if (isCollapsed) "Expand" else "Collapse"
+                        )
+                    }
                 }
             }
 
             Spacer(modifier = Modifier.height(12.dp))
 
-            when {
-                isOffline -> {
-                    OfflineBanner(onRetry = onRefresh)
-                }
-                error != null -> {
-                    ErrorBanner(message = error, onRetry = onRefresh)
-                }
-                services.isEmpty() && !isLoading -> {
-                    Text(
-                        text = "No buses available",
-                        style = MaterialTheme.typography.bodyMedium,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant
-                    )
-                }
-                else -> {
-                    services.forEach { service ->
-                        BusServiceRow(service = service)
-                        Spacer(modifier = Modifier.height(12.dp))
-                    }
-                    if (lastUpdated > 0) {
-                        Spacer(modifier = Modifier.height(4.dp))
-                        Text(
-                            text = "Updated: ${formatLastUpdated(lastUpdated)}",
-                            style = MaterialTheme.typography.labelSmall,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant
-                        )
+            AnimatedVisibility(visible = !isCollapsed) {
+                Column {
+                    when {
+                        isOffline -> {
+                            OfflineBanner(onRetry = onRefresh)
+                        }
+                        error != null -> {
+                            ErrorBanner(message = error, onRetry = onRefresh)
+                        }
+                        services.isEmpty() && !isLoading -> {
+                            Text(
+                                text = "No buses available",
+                                style = MaterialTheme.typography.bodyMedium,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant
+                            )
+                        }
+                        else -> {
+                            services.forEach { service ->
+                                BusServiceRow(service = service)
+                                Spacer(modifier = Modifier.height(12.dp))
+                            }
+                            if (lastUpdated > 0) {
+                                Spacer(modifier = Modifier.height(4.dp))
+                                Text(
+                                    text = "Updated: ${formatLastUpdated(lastUpdated)}",
+                                    style = MaterialTheme.typography.labelSmall,
+                                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                                )
+                            }
+                        }
                     }
                 }
             }
@@ -258,38 +280,10 @@ fun BusServiceRow(service: BusService) {
 
 private fun getBusTypeIcon(busType: String): String {
     return when (busType) {
-        "Double Decker" -> "D"
-        "Single Decker" -> "S"
-        "Bendy" -> "B"
-        else -> "S"
-    }
-}
-
-@Composable
-private fun BusTypeIcon(busType: String) {
-    val (bgColor, text, label) = when (busType) {
-        "Double Decker" -> Triple(Color(0xFF2196F3), "DD", "Double Deck")
-        "Single Decker" -> Triple(Color(0xFF4CAF50), "SD", "Single Deck")
-        "Bendy" -> Triple(Color(0xFFFF9800), "BD", "Bendy")
-        else -> Triple(Color(0xFF9E9E9E), "S", "Bus")
-    }
-    
-    Row(verticalAlignment = Alignment.CenterVertically) {
-        Box(
-            modifier = Modifier
-                .size(width = 20.dp, height = 16.dp)
-                .clip(RoundedCornerShape(2.dp))
-                .background(bgColor),
-            contentAlignment = Alignment.Center
-        ) {
-            Text(
-                text = text,
-                style = MaterialTheme.typography.labelSmall,
-                fontWeight = FontWeight.Bold,
-                color = Color.White,
-                fontSize = 8.sp
-            )
-        }
+        "Double Decker" -> "DD"
+        "Single Decker" -> "SD"
+        "Bendy" -> "BD"
+        else -> "SD"
     }
 }
 

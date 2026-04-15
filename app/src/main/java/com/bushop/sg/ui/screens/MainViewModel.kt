@@ -25,7 +25,8 @@ data class BusStopWithArrivals(
     val isLoading: Boolean = false,
     val error: String? = null,
     val isOffline: Boolean = false,
-    val lastUpdated: Long = 0L
+    val lastUpdated: Long = 0L,
+    val isCollapsed: Boolean = true
 )
 
 class MainViewModel(private val repository: BusRepository) : ViewModel() {
@@ -65,7 +66,7 @@ class MainViewModel(private val repository: BusRepository) : ViewModel() {
                     )
                 }
             }.collect { list ->
-                _savedStops.value = list
+                _savedStops.value = list.map { it.copy(isCollapsed = it.isCollapsed) }
                 if (list.any { it.services.isNotEmpty() }.not() && list.isNotEmpty()) {
                     refreshAll()
                 }
@@ -185,6 +186,15 @@ class MainViewModel(private val repository: BusRepository) : ViewModel() {
             }
         } else {
             currentList.sortedBy { it.busStop.code }
+        }
+    }
+
+    fun toggleCollapse(code: String) {
+        val index = _savedStops.value.indexOfFirst { it.busStop.code == code }
+        if (index != -1) {
+            _savedStops.value = _savedStops.value.toMutableList().apply {
+                this[index] = this[index].copy(isCollapsed = !this[index].isCollapsed)
+            }
         }
     }
 

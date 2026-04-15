@@ -141,10 +141,12 @@ fun MainScreen(viewModel: MainViewModel) {
                         error = stopWithArrivals.error,
                         isOffline = stopWithArrivals.isOffline,
                         lastUpdated = stopWithArrivals.lastUpdated,
+                        isCollapsed = stopWithArrivals.isCollapsed,
                         onRefresh = { viewModel.refreshArrivals(stopWithArrivals.busStop.code) },
+                        onToggleCollapse = { viewModel.toggleCollapse(stopWithArrivals.busStop.code) },
                         onDelete = { deleteTarget = stopWithArrivals.busStop.code },
                         modifier = Modifier.combinedClickable(
-                            onClick = { },
+                            onClick = { viewModel.toggleCollapse(stopWithArrivals.busStop.code) },
                             onLongClick = { deleteTarget = stopWithArrivals.busStop.code }
                         )
                     )
