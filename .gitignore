@@ -1,0 +1,19 @@
+# Build
+app/build/
+build/
+.gradle/
+gradle/wrapper/gradle-wrapper.jar
+
+# Heap dumps
+*.hprof
+
+# Local config
+local.properties
+
+# IDE
+.idea/
+*.iml
+
+# OS
+.DS_Store
+Thumbs.db
