@@ -26,7 +26,7 @@ data class BusStopWithArrivals(
     val error: String? = null,
     val isOffline: Boolean = false,
     val lastUpdated: Long = 0L,
-    val isCollapsed: Boolean = true,
+    val isCollapsed: Boolean = false,
     val isPinned: Boolean = false
 )
 
@@ -63,13 +63,14 @@ class MainViewModel(private val repository: BusRepository) : ViewModel() {
                         isLoading = existing?.isLoading ?: false,
                         error = existing?.error,
                         isOffline = existing?.isOffline ?: false,
-                        lastUpdated = existing?.lastUpdated ?: 0L
+                        lastUpdated = existing?.lastUpdated ?: 0L,
+                        isCollapsed = existing?.isCollapsed ?: false,
+                        isPinned = existing?.isPinned ?: false
                     )
                 }
             }.collect { list ->
-                // Never auto collapse - keep user's state
-                _savedStops.value = list.map { it.copy(isCollapsed = it.isCollapsed) }
-                if (list.any { it.services.isNotEmpty() }.not() && list.isNotEmpty()) {
+                _savedStops.value = list
+                if (list.isNotEmpty() && list.none { it.services.isNotEmpty() }) {
                     refreshAll()
                 }
             }
@@ -164,39 +165,26 @@ class MainViewModel(private val repository: BusRepository) : ViewModel() {
         }
     }
 
-    private fun startAutoRefresh() {
-        stopAutoRefresh()
-        autoRefreshJob = viewModelScope.launch {
-            while (true) {
-                delay(autoRefreshIntervalSeconds * 1000L)
-                refreshAll()
-            }
-        }
-    }
-
-    private fun stopAutoRefresh() {
-        autoRefreshJob?.cancel()
-        autoRefreshJob = null
-    }
-
     fun toggleSortOrder() {
         sortByEarliest = !sortByEarliest
         val currentList = _savedStops.value.toList()
-        val sortedList = if (sortByEarliest) {
+        
+        _savedStops.value = if (sortByEarliest) {
             currentList.sortedBy { stop ->
-                val firstService = stop.services.firstOrNull()
-                val nextInfo = firstService?.next
-                if (firstService == null || nextInfo == null) Long.MAX_VALUE
-                else if (nextInfo.durationMs < 60000) 0L
-                else nextInfo.durationMs
+                val nextInfo = stop.services.firstOrNull()?.next
+                when {
+                    nextInfo == null -> Long.MAX_VALUE
+                    nextInfo.durationMs < 60000 -> 0L
+                    else -> nextInfo.durationMs
+                }
             }
         } else {
             currentList.sortedBy { it.busStop.code }
         }
-        _savedStops.value = sortedList.map { it.copy(isLoading = true) }
+        
+        val sortedCodes = _savedStops.value.map { it.busStop.code }
         viewModelScope.launch {
-            val resultCodes = sortedList.map { it.busStop.code }
-            resultCodes.forEach { code ->
+            sortedCodes.forEach { code ->
                 refreshArrivals(code)
             }
         }
@@ -218,6 +206,21 @@ class MainViewModel(private val repository: BusRepository) : ViewModel() {
                 this[index] = this[index].copy(isPinned = !this[index].isPinned)
             }
         }
+    }
+
+    private fun startAutoRefresh() {
+        stopAutoRefresh()
+        autoRefreshJob = viewModelScope.launch {
+            while (true) {
+                delay(autoRefreshIntervalSeconds * 1000L)
+                refreshAll()
+            }
+        }
+    }
+
+    private fun stopAutoRefresh() {
+        autoRefreshJob?.cancel()
+        autoRefreshJob = null
     }
 
     override fun onCleared() {
