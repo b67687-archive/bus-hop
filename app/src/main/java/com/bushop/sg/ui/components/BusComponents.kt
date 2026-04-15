@@ -6,6 +6,8 @@ import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.ExperimentalLayoutApi
+import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -35,10 +37,12 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import com.bushop.sg.data.model.BusService
 import com.bushop.sg.data.model.toDisplayArrival
 
+@OptIn(ExperimentalLayoutApi::class)
 @Composable
 fun BusStopCard(
     busStopCode: String,
@@ -75,13 +79,6 @@ fun BusStopCard(
                         style = MaterialTheme.typography.titleLarge,
                         fontWeight = FontWeight.Bold
                     )
-                    if (services.isNotEmpty()) {
-                        Text(
-                            text = "${services.size} buses",
-                            style = MaterialTheme.typography.labelSmall,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant
-                        )
-                    }
                 }
                 Row(verticalAlignment = Alignment.CenterVertically) {
                     if (isLoading) {
@@ -100,10 +97,24 @@ fun BusStopCard(
                 }
             }
 
-            Spacer(modifier = Modifier.height(12.dp))
+            AnimatedVisibility(visible = isCollapsed && services.isNotEmpty()) {
+                FlowRow(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(vertical = 8.dp),
+                    horizontalArrangement = Arrangement.spacedBy(8.dp),
+                    verticalArrangement = Arrangement.spacedBy(4.dp)
+                ) {
+                    services.forEach { service ->
+                        CollapsedBusChip(service = service)
+                    }
+                }
+            }
 
             AnimatedVisibility(visible = !isCollapsed) {
                 Column {
+                    Spacer(modifier = Modifier.height(8.dp))
+                    
                     when {
                         isOffline -> {
                             OfflineBanner(onRetry = onRefresh)
@@ -136,6 +147,33 @@ fun BusStopCard(
                 }
             }
         }
+    }
+}
+
+@Composable
+private fun CollapsedBusChip(service: BusService) {
+    val arrival = service.next?.toDisplayArrival()
+    val eta = arrival?.eta ?: "--"
+    
+    Row(
+        modifier = Modifier
+            .clip(RoundedCornerShape(8.dp))
+            .background(MaterialTheme.colorScheme.primaryContainer)
+            .padding(horizontal = 10.dp, vertical = 6.dp),
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.spacedBy(6.dp)
+    ) {
+        Text(
+            text = service.serviceNo,
+            style = MaterialTheme.typography.labelMedium,
+            fontWeight = FontWeight.Bold,
+            color = MaterialTheme.colorScheme.onPrimaryContainer
+        )
+        Text(
+            text = eta,
+            style = MaterialTheme.typography.labelMedium,
+            color = MaterialTheme.colorScheme.onPrimaryContainer
+        )
     }
 }
 
@@ -194,7 +232,7 @@ fun BusServiceRow(service: BusService) {
             .clip(RoundedCornerShape(12.dp))
             .background(MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f))
             .padding(12.dp),
-        verticalAlignment = Alignment.Top
+        verticalAlignment = Alignment.CenterVertically
     ) {
         Box(
             modifier = Modifier
@@ -235,38 +273,14 @@ fun BusServiceRow(service: BusService) {
             service.next?.let { next ->
                 val arrival = next.toDisplayArrival()
                 Text(
-                    text = "Next: ${arrival.eta}",
-                    style = MaterialTheme.typography.bodyLarge,
-                    fontWeight = FontWeight.Medium
-                )
-                Text(
-                    text = "${getBusTypeIcon(arrival.busType)} ${arrival.load}",
+                    text = "${arrival.busType} - ${arrival.load}",
                     style = MaterialTheme.typography.bodySmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant
                 )
             }
 
-            service.subsequent?.let { subsequent ->
-                val arrival2 = subsequent.toDisplayArrival()
-                Spacer(modifier = Modifier.height(4.dp))
-                Text(
-                    text = "2nd: ${arrival2.eta}",
-                    style = MaterialTheme.typography.bodySmall,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.8f)
-                )
-            }
-            
-            service.next3?.let { next3 ->
-                val arrival3 = next3.toDisplayArrival()
-                Text(
-                    text = "3rd: ${arrival3.eta}",
-                    style = MaterialTheme.typography.bodySmall,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.6f)
-                )
-            }
-
             if (showWabInfo) {
-                Spacer(modifier = Modifier.height(8.dp))
+                Spacer(modifier = Modifier.height(4.dp))
                 Text(
                     text = "Wheelchair accessible bus",
                     style = MaterialTheme.typography.labelSmall,
@@ -275,15 +289,40 @@ fun BusServiceRow(service: BusService) {
                 )
             }
         }
-    }
-}
 
-private fun getBusTypeIcon(busType: String): String {
-    return when (busType) {
-        "Double Decker" -> "DD"
-        "Single Decker" -> "SD"
-        "Bendy" -> "BD"
-        else -> "SD"
+        Column(
+            horizontalAlignment = Alignment.End,
+            verticalArrangement = Arrangement.spacedBy(2.dp)
+        ) {
+            service.next?.let { next ->
+                val arrival = next.toDisplayArrival()
+                Text(
+                    text = arrival.eta,
+                    style = MaterialTheme.typography.titleMedium,
+                    fontWeight = FontWeight.Bold,
+                    color = MaterialTheme.colorScheme.primary,
+                    textAlign = TextAlign.End
+                )
+            }
+            service.subsequent?.let { subsequent ->
+                val arrival2 = subsequent.toDisplayArrival()
+                Text(
+                    text = arrival2.eta,
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    textAlign = TextAlign.End
+                )
+            }
+            service.next3?.let { next3 ->
+                val arrival3 = next3.toDisplayArrival()
+                Text(
+                    text = arrival3.eta,
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.7f),
+                    textAlign = TextAlign.End
+                )
+            }
+        }
     }
 }
 
@@ -292,7 +331,7 @@ fun OperatorBadge(operator: String) {
     val (bgColor, text) = when (operator) {
         "SBST" -> Color(0xFF0055A4) to "SBS"
         "SMRT" -> Color(0xFF003D7C) to "SMRT"
-        "TTS" -> Color(0xFFA00000) to "TTS"
+        "TTS" -> Color(0xFF8B0000) to "TTS"
         "GAS" -> Color(0xFF6B8E23) to "GAS"
         else -> Color(0xFF666666) to operator
     }

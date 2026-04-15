@@ -66,7 +66,10 @@ class MainViewModel(private val repository: BusRepository) : ViewModel() {
                     )
                 }
             }.collect { list ->
-                _savedStops.value = list.map { it.copy(isCollapsed = it.isCollapsed) }
+                _savedStops.value = list.mapIndexed { index, item ->
+                    val shouldOpen = list.size <= 2
+                    item.copy(isCollapsed = !shouldOpen)
+                }
                 if (list.any { it.services.isNotEmpty() }.not() && list.isNotEmpty()) {
                     refreshAll()
                 }
