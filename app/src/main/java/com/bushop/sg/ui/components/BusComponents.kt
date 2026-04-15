@@ -13,8 +13,7 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.AccessTime
-import androidx.compose.material.icons.filled.DirectionsBus
+import androidx.compose.material.icons.filled.CloudOff
 import androidx.compose.material.icons.outlined.Accessibility
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
@@ -37,6 +36,7 @@ fun BusStopCard(
     services: List<BusService>,
     isLoading: Boolean,
     error: String?,
+    isOffline: Boolean,
     onRefresh: () -> Unit,
     onDelete: () -> Unit,
     modifier: Modifier = Modifier
@@ -73,25 +73,73 @@ fun BusStopCard(
 
             Spacer(modifier = Modifier.height(12.dp))
 
-            if (error != null) {
-                Text(
-                    text = error,
-                    style = MaterialTheme.typography.bodyMedium,
-                    color = MaterialTheme.colorScheme.error
-                )
-            } else if (services.isEmpty() && !isLoading) {
-                Text(
-                    text = "No buses available",
-                    style = MaterialTheme.typography.bodyMedium,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant
-                )
-            } else {
-                services.forEach { service ->
-                    BusServiceRow(service = service)
-                    Spacer(modifier = Modifier.height(12.dp))
+            when {
+                isOffline -> {
+                    OfflineBanner(onRetry = onRefresh)
+                }
+                error != null -> {
+                    ErrorBanner(message = error, onRetry = onRefresh)
+                }
+                services.isEmpty() && !isLoading -> {
+                    Text(
+                        text = "No buses available",
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                }
+                else -> {
+                    services.forEach { service ->
+                        BusServiceRow(service = service)
+                        Spacer(modifier = Modifier.height(12.dp))
+                    }
                 }
             }
         }
+    }
+}
+
+@Composable
+private fun OfflineBanner(onRetry: () -> Unit) {
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .clip(RoundedCornerShape(12.dp))
+            .background(Color(0xFFFFF3E0))
+            .padding(16.dp),
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.Center
+    ) {
+        Icon(
+            imageVector = Icons.Default.CloudOff,
+            contentDescription = null,
+            tint = Color(0xFFE65100),
+            modifier = Modifier.size(20.dp)
+        )
+        Spacer(modifier = Modifier.width(8.dp))
+        Text(
+            text = "No internet connection",
+            style = MaterialTheme.typography.bodyMedium,
+            color = Color(0xFFE65100)
+        )
+    }
+}
+
+@Composable
+private fun ErrorBanner(message: String, onRetry: () -> Unit) {
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .clip(RoundedCornerShape(12.dp))
+            .background(Color(0xFFFFEBEE))
+            .padding(16.dp),
+        verticalAlignment = Alignment.CenterVertically
+    ) {
+        Text(
+            text = message,
+            style = MaterialTheme.typography.bodyMedium,
+            color = MaterialTheme.colorScheme.error,
+            modifier = Modifier.weight(1f)
+        )
     }
 }
 

@@ -13,12 +13,14 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
+import java.net.UnknownHostException
 
 data class BusStopWithArrivals(
     val busStop: BusStop,
     val services: List<BusService> = emptyList(),
     val isLoading: Boolean = false,
-    val error: String? = null
+    val error: String? = null,
+    val isOffline: Boolean = false
 )
 
 class MainViewModel(private val repository: BusRepository) : ViewModel() {
@@ -71,15 +73,19 @@ class MainViewModel(private val repository: BusRepository) : ViewModel() {
             val index = _savedStops.value.indexOfFirst { it.busStop.code == code }
             if (index != -1) {
                 _savedStops.value = _savedStops.value.toMutableList().apply {
-                    this[index] = this[index].copy(isLoading = true, error = null)
+                    this[index] = this[index].copy(isLoading = true, error = null, isOffline = false)
                 }
 
                 val result = repository.getBusArrivals(code)
+                val isOffline = result.exceptionOrNull() is UnknownHostException ||
+                        result.exceptionOrNull()?.cause is UnknownHostException
+
                 _savedStops.value = _savedStops.value.toMutableList().apply {
                     this[index] = this[index].copy(
                         services = result.getOrNull() ?: emptyList(),
                         isLoading = false,
-                        error = result.exceptionOrNull()?.message
+                        error = if (isOffline) null else result.exceptionOrNull()?.message,
+                        isOffline = isOffline
                     )
                 }
             }

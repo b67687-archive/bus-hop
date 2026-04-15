@@ -139,6 +139,7 @@ fun MainScreen(viewModel: MainViewModel) {
                             services = stopWithArrivals.services,
                             isLoading = stopWithArrivals.isLoading,
                             error = stopWithArrivals.error,
+                            isOffline = stopWithArrivals.isOffline,
                             onRefresh = { viewModel.refreshArrivals(stopWithArrivals.busStop.code) },
                             onDelete = { viewModel.removeBusStop(stopWithArrivals.busStop.code) }
                         )
