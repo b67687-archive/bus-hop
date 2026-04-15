@@ -1,6 +1,8 @@
 package com.bushop.sg.ui.screens
 
+import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -17,6 +19,8 @@ import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.Check
 import androidx.compose.material.icons.filled.Refresh
 import androidx.compose.material.icons.filled.Settings
+import androidx.compose.material.icons.filled.Sort
+import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.CenterAlignedTopAppBar
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.FloatingActionButton
@@ -27,11 +31,9 @@ import androidx.compose.material3.ListItem
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.ModalBottomSheet
 import androidx.compose.material3.Scaffold
-import androidx.compose.material3.SwipeToDismissBox
-import androidx.compose.material3.SwipeToDismissBoxValue
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.material3.TopAppBarDefaults
-import androidx.compose.material3.rememberSwipeToDismissBoxState
 import androidx.compose.material3.rememberModalBottomSheetState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
@@ -42,20 +44,21 @@ import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import com.bushop.sg.ui.components.AddBusStopDialog
 import com.bushop.sg.ui.components.BusStopCard
 import kotlinx.coroutines.launch
 
-@OptIn(ExperimentalMaterial3Api::class)
+@OptIn(ExperimentalMaterial3Api::class, ExperimentalFoundationApi::class)
 @Composable
 fun MainScreen(viewModel: MainViewModel) {
     val savedStops by viewModel.savedStops.collectAsState()
     val scope = rememberCoroutineScope()
     var showSettings by remember { mutableStateOf(false) }
     val sheetState = rememberModalBottomSheetState()
+    
+    var deleteTarget by remember { mutableStateOf<String?>(null) }
 
     Scaffold(
         topBar = {
@@ -67,6 +70,12 @@ fun MainScreen(viewModel: MainViewModel) {
                     ) 
                 },
                 actions = {
+                    IconButton(onClick = { viewModel.toggleSortOrder() }) {
+                        Icon(
+                            imageVector = Icons.Default.Sort,
+                            contentDescription = "Sort"
+                        )
+                    }
                     IconButton(onClick = { showSettings = true }) {
                         Icon(
                             imageVector = Icons.Default.Settings,
@@ -125,46 +134,20 @@ fun MainScreen(viewModel: MainViewModel) {
                     items = savedStops,
                     key = { it.busStop.code }
                 ) { stopWithArrivals ->
-                    val dismissState = rememberSwipeToDismissBoxState(
-                        confirmValueChange = { value ->
-                            if (value == SwipeToDismissBoxValue.EndToStart) {
-                                viewModel.removeBusStop(stopWithArrivals.busStop.code)
-                                true
-                            } else {
-                                false
-                            }
-                        }
-                    )
-
-                    SwipeToDismissBox(
-                        state = dismissState,
-                        backgroundContent = {
-                            Box(
-                                modifier = Modifier
-                                    .fillMaxSize()
-                                    .padding(horizontal = 16.dp),
-                                contentAlignment = Alignment.CenterEnd
-                            ) {
-                                Text(
-                                    text = "Delete",
-                                    color = Color(0xFFFF3B30),
-                                    style = MaterialTheme.typography.labelLarge
-                                )
-                            }
-                        },
-                        enableDismissFromStartToEnd = false
-                    ) {
-                        BusStopCard(
-                            busStopCode = stopWithArrivals.busStop.code,
-                            services = stopWithArrivals.services,
-                            isLoading = stopWithArrivals.isLoading,
-                            error = stopWithArrivals.error,
-                            isOffline = stopWithArrivals.isOffline,
-                            lastUpdated = stopWithArrivals.lastUpdated,
-                            onRefresh = { viewModel.refreshArrivals(stopWithArrivals.busStop.code) },
-                            onDelete = { viewModel.removeBusStop(stopWithArrivals.busStop.code) }
+                    BusStopCard(
+                        busStopCode = stopWithArrivals.busStop.code,
+                        services = stopWithArrivals.services,
+                        isLoading = stopWithArrivals.isLoading,
+                        error = stopWithArrivals.error,
+                        isOffline = stopWithArrivals.isOffline,
+                        lastUpdated = stopWithArrivals.lastUpdated,
+                        onRefresh = { viewModel.refreshArrivals(stopWithArrivals.busStop.code) },
+                        onDelete = { deleteTarget = stopWithArrivals.busStop.code },
+                        modifier = Modifier.combinedClickable(
+                            onClick = { },
+                            onLongClick = { deleteTarget = stopWithArrivals.busStop.code }
                         )
-                    }
+                    )
                 }
             }
         }
@@ -225,5 +208,28 @@ fun MainScreen(viewModel: MainViewModel) {
                 }
             }
         }
+    }
+
+    if (deleteTarget != null) {
+        AlertDialog(
+            onDismissRequest = { deleteTarget = null },
+            title = { Text("Delete Bus Stop?") },
+            text = { Text("Are you sure you want to delete bus stop $deleteTarget? This cannot be undone.") },
+            confirmButton = {
+                TextButton(
+                    onClick = {
+                        viewModel.removeBusStop(deleteTarget!!)
+                        deleteTarget = null
+                    }
+                ) {
+                    Text("Delete", color = MaterialTheme.colorScheme.error)
+                }
+            },
+            dismissButton = {
+                TextButton(onClick = { deleteTarget = null }) {
+                    Text("Cancel")
+                }
+            }
+        )
     }
 }

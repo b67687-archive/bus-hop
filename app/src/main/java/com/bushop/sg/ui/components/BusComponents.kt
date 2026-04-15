@@ -1,6 +1,7 @@
 package com.bushop.sg.ui.components
 
 import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -14,19 +15,28 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.CloudOff
+import androidx.compose.material.icons.filled.DirectionsBus
 import androidx.compose.material.icons.outlined.Accessibility
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 import com.bushop.sg.data.model.BusService
 import com.bushop.sg.data.model.toDisplayArrival
 
@@ -154,13 +164,15 @@ private fun ErrorBanner(message: String, onRetry: () -> Unit) {
 
 @Composable
 fun BusServiceRow(service: BusService) {
+    var showWabInfo by remember { mutableStateOf(false) }
+
     Row(
         modifier = Modifier
             .fillMaxWidth()
             .clip(RoundedCornerShape(12.dp))
             .background(MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f))
             .padding(12.dp),
-        verticalAlignment = Alignment.CenterVertically
+        verticalAlignment = Alignment.Top
     ) {
         Box(
             modifier = Modifier
@@ -184,12 +196,17 @@ fun BusServiceRow(service: BusService) {
                 OperatorBadge(operator = service.operator)
                 if (service.next?.feature == "WAB") {
                     Spacer(modifier = Modifier.width(8.dp))
-                    Icon(
-                        imageVector = Icons.Outlined.Accessibility,
-                        contentDescription = "Wheelchair Accessible",
-                        modifier = Modifier.size(16.dp),
-                        tint = MaterialTheme.colorScheme.primary
-                    )
+                    IconButton(
+                        onClick = { showWabInfo = !showWabInfo },
+                        modifier = Modifier.size(20.dp)
+                    ) {
+                        Icon(
+                            imageVector = Icons.Outlined.Accessibility,
+                            contentDescription = "Wheelchair info",
+                            modifier = Modifier.size(18.dp),
+                            tint = MaterialTheme.colorScheme.primary
+                        )
+                    }
                 }
             }
             
@@ -201,11 +218,77 @@ fun BusServiceRow(service: BusService) {
                     fontWeight = FontWeight.Medium
                 )
                 Text(
-                    text = "${arrival.busType} • ${arrival.load}",
+                    text = "${getBusTypeIcon(arrival.busType)} ${arrival.load}",
                     style = MaterialTheme.typography.bodySmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant
                 )
             }
+
+            service.subsequent?.let { subsequent ->
+                val arrival2 = subsequent.toDisplayArrival()
+                Spacer(modifier = Modifier.height(4.dp))
+                Text(
+                    text = "2nd: ${arrival2.eta}",
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.8f)
+                )
+            }
+            
+            service.next3?.let { next3 ->
+                val arrival3 = next3.toDisplayArrival()
+                Text(
+                    text = "3rd: ${arrival3.eta}",
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.6f)
+                )
+            }
+
+            if (showWabInfo) {
+                Spacer(modifier = Modifier.height(8.dp))
+                Text(
+                    text = "Wheelchair accessible bus",
+                    style = MaterialTheme.typography.labelSmall,
+                    color = MaterialTheme.colorScheme.primary,
+                    fontWeight = FontWeight.Medium
+                )
+            }
+        }
+    }
+}
+
+private fun getBusTypeIcon(busType: String): String {
+    return when (busType) {
+        "Double Decker" -> "D"
+        "Single Decker" -> "S"
+        "Bendy" -> "B"
+        else -> "S"
+    }
+}
+
+@Composable
+private fun BusTypeIcon(busType: String) {
+    val (bgColor, text, label) = when (busType) {
+        "Double Decker" -> Triple(Color(0xFF2196F3), "DD", "Double Deck")
+        "Single Decker" -> Triple(Color(0xFF4CAF50), "SD", "Single Deck")
+        "Bendy" -> Triple(Color(0xFFFF9800), "BD", "Bendy")
+        else -> Triple(Color(0xFF9E9E9E), "S", "Bus")
+    }
+    
+    Row(verticalAlignment = Alignment.CenterVertically) {
+        Box(
+            modifier = Modifier
+                .size(width = 20.dp, height = 16.dp)
+                .clip(RoundedCornerShape(2.dp))
+                .background(bgColor),
+            contentAlignment = Alignment.Center
+        ) {
+            Text(
+                text = text,
+                style = MaterialTheme.typography.labelSmall,
+                fontWeight = FontWeight.Bold,
+                color = Color.White,
+                fontSize = 8.sp
+            )
         }
     }
 }
