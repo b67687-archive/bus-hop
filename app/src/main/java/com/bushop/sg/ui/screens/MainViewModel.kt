@@ -42,6 +42,9 @@ class MainViewModel(private val repository: BusRepository) : ViewModel() {
     private var autoRefreshJob: Job? = null
     var autoRefreshIntervalSeconds by mutableStateOf(30)
         private set
+    
+    var sortByEarliest by mutableStateOf(false)
+        private set
 
     init {
         viewModelScope.launch {
@@ -171,6 +174,18 @@ class MainViewModel(private val repository: BusRepository) : ViewModel() {
     private fun stopAutoRefresh() {
         autoRefreshJob?.cancel()
         autoRefreshJob = null
+    }
+
+    fun toggleSortOrder() {
+        sortByEarliest = !sortByEarliest
+        val currentList = _savedStops.value.toList()
+        _savedStops.value = if (sortByEarliest) {
+            currentList.sortedBy { stop ->
+                stop.services.firstOrNull()?.next?.durationMs ?: Long.MAX_VALUE
+            }
+        } else {
+            currentList.sortedBy { it.busStop.code }
+        }
     }
 
     override fun onCleared() {
