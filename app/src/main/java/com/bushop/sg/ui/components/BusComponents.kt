@@ -46,6 +46,7 @@ import com.bushop.sg.data.model.toDisplayArrival
 @Composable
 fun BusStopCard(
     busStopCode: String,
+    busStopName: String = "",
     services: List<BusService>,
     isLoading: Boolean,
     error: String?,
@@ -79,6 +80,20 @@ fun BusStopCard(
                         style = MaterialTheme.typography.titleLarge,
                         fontWeight = FontWeight.Bold
                     )
+                    if (busStopName.isNotBlank()) {
+                        Text(
+                            text = busStopName,
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.primary
+                        )
+                    }
+                    if (services.isNotEmpty()) {
+                        Text(
+                            text = "${services.size} buses",
+                            style = MaterialTheme.typography.labelSmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
+                    }
                 }
                 Row(verticalAlignment = Alignment.CenterVertically) {
                     if (isLoading) {

@@ -136,6 +136,7 @@ fun MainScreen(viewModel: MainViewModel) {
                 ) { stopWithArrivals ->
                     BusStopCard(
                         busStopCode = stopWithArrivals.busStop.code,
+                        busStopName = stopWithArrivals.busStop.name,
                         services = stopWithArrivals.services,
                         isLoading = stopWithArrivals.isLoading,
                         error = stopWithArrivals.error,
