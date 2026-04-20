@@ -167,27 +167,21 @@ class MainViewModel(private val repository: BusRepository) : ViewModel() {
 
     fun toggleSortOrder() {
         sortByEarliest = !sortByEarliest
-        val currentList = _savedStops.value.toList()
         
-        _savedStops.value = if (sortByEarliest) {
-            currentList.sortedBy { stop ->
-                val nextInfo = stop.services.firstOrNull()?.next
+        val sorted = if (sortByEarliest) {
+            _savedStops.value.sortedBy { stop ->
+                val first = stop.services.firstOrNull()?.next
                 when {
-                    nextInfo == null -> Long.MAX_VALUE
-                    nextInfo.durationMs < 60000 -> 0L
-                    else -> nextInfo.durationMs
+                    first == null -> Long.MAX_VALUE
+                    first.durationMs < 60000 -> 0L
+                    else -> first.durationMs
                 }
             }
         } else {
-            currentList.sortedBy { it.busStop.code }
+            _savedStops.value.sortedBy { it.busStop.code }
         }
         
-        val sortedCodes = _savedStops.value.map { it.busStop.code }
-        viewModelScope.launch {
-            sortedCodes.forEach { code ->
-                refreshArrivals(code)
-            }
-        }
+        _savedStops.value = sorted
     }
 
     fun toggleCollapse(code: String) {
