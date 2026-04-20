@@ -216,18 +216,38 @@ fun MainScreen(viewModel: MainViewModel) {
     }
 
     if (deleteTarget != null) {
+        val targetStop = savedStops.find { it.busStop.code == deleteTarget }
+        val isPinned = targetStop?.isPinned == true
+        
         AlertDialog(
             onDismissRequest = { deleteTarget = null },
-            title = { Text("Delete Bus Stop?") },
-            text = { Text("Are you sure you want to delete bus stop $deleteTarget? This cannot be undone.") },
+            title = { Text(if (isPinned) "Pinned Bus Stop" else "Delete Bus Stop?") },
+            text = { 
+                Text(if (isPinned) {
+                    "Bus stop $deleteTarget is pinned. Unpin first before deleting."
+                } else {
+                    "Are you sure you want to delete bus stop $deleteTarget? This cannot be undone."
+                }) 
+            },
             confirmButton = {
-                TextButton(
-                    onClick = {
-                        viewModel.removeBusStop(deleteTarget!!)
-                        deleteTarget = null
+                if (isPinned) {
+                    TextButton(
+                        onClick = {
+                            viewModel.togglePin(deleteTarget!!)
+                            deleteTarget = null
+                        }
+                    ) {
+                        Text("Unpin")
                     }
-                ) {
-                    Text("Delete", color = MaterialTheme.colorScheme.error)
+                } else {
+                    TextButton(
+                        onClick = {
+                            viewModel.removeBusStop(deleteTarget!!)
+                            deleteTarget = null
+                        }
+                    ) {
+                        Text("Delete", color = MaterialTheme.colorScheme.error)
+                    }
                 }
             },
             dismissButton = {
