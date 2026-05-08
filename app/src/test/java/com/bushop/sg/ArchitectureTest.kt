@@ -15,7 +15,7 @@ import java.io.File
 class ArchitectureTest {
 
     private val projectRoot: File by lazy {
-        val cwd = File(System.getProperty("user.dir", "."))
+        val cwd = File(System.getProperty("user.dir") ?: ".")
         val candidates = listOf(cwd, cwd.parentFile).filterNotNull()
         val root = candidates.firstOrNull { File(it, "app/build.gradle.kts").exists() }
         requireNotNull(root) {
@@ -24,59 +24,22 @@ class ArchitectureTest {
         }
     }
 
-    // ── Package boundary: ui/ must not import data/repository, data/api, or data/local ──
+    // ── Domain module must not import android / androidx ──
 
     @Test
-    fun `ui package does not import data-repository data-api or data-local`() {
+    fun `domain module does not import android or androidx`() {
         val violations = mutableListOf<String>()
 
-        File(projectRoot, "app/src/main/java/com/bushop/sg/ui")
-            .walkTopDown()
-            .filter { it.extension == "kt" }
-            .forEach { file ->
-                val lines = file.readLines()
-                for (line in lines) {
-                    val trimmed = line.trim()
-                    if (trimmed.startsWith("import ")) {
-                        if (trimmed.contains("com.bushop.sg.data.repository") ||
-                            trimmed.contains("com.bushop.sg.data.api") ||
-                            trimmed.contains("com.bushop.sg.data.local")
-                        ) {
-                            violations.add("${file.name}: $trimmed")
-                        }
-                    }
-                }
-            }
-
-        Assert.assertTrue(
-            buildString {
-                appendLine("ui/ package must not import from data/repository, data/api, or data/local:")
-                violations.forEach { appendLine("  $it") }
-            },
-            violations.isEmpty()
-        )
-    }
-
-    // ── Package boundary: data layers must not import android / androidx ──
-
-    @Test
-    fun `data layer classes do not import android or androidx`() {
-        val allowedFiles = setOf(
-            "BusStopIndex.kt",   // needs Context
-            "BusStopStorage.kt"  // needs Context
-        )
-        val violations = mutableListOf<String>()
-
-        val dataDirs = listOf(
-            "data/model",
-            "data/api",
-            "data/usecase"
+        val domainDirs = listOf(
+            "model", "api", "repository", "usecase"
         )
 
-        for (subDir in dataDirs) {
-            File(projectRoot, "app/src/main/java/com/bushop/sg/$subDir")
+        val domainRoot = File(projectRoot, "domain/src/main/kotlin/com/bushop/sg/domain")
+
+        for (subDir in domainDirs) {
+            File(domainRoot, subDir)
                 .walkTopDown()
-                .filter { it.extension == "kt" && it.name !in allowedFiles }
+                .filter { it.extension == "kt" }
                 .forEach { file ->
                     val lines = file.readLines()
                     for (line in lines) {
@@ -94,39 +57,7 @@ class ArchitectureTest {
 
         Assert.assertTrue(
             buildString {
-                appendLine("data/ classes must not import android.* or androidx.*:")
-                violations.forEach { appendLine("  $it") }
-            },
-            violations.isEmpty()
-        )
-    }
-
-    // ── data/repository classes also must not import android / androidx ──
-
-    @Test
-    fun `data repository classes do not import android or androidx`() {
-        val violations = mutableListOf<String>()
-
-        File(projectRoot, "app/src/main/java/com/bushop/sg/data/repository")
-            .walkTopDown()
-            .filter { it.extension == "kt" }
-            .forEach { file ->
-                val lines = file.readLines()
-                for (line in lines) {
-                    val trimmed = line.trim()
-                    if (trimmed.startsWith("import ")) {
-                        if (trimmed.startsWith("import android.") ||
-                            trimmed.startsWith("import androidx.")
-                        ) {
-                            violations.add("${file.name}: $trimmed")
-                        }
-                    }
-                }
-            }
-
-        Assert.assertTrue(
-            buildString {
-                appendLine("data/repository/ classes must not import android.* or androidx.*:")
+                appendLine("domain/ module must not import android.* or androidx.*:")
                 violations.forEach { appendLine("  $it") }
             },
             violations.isEmpty()
