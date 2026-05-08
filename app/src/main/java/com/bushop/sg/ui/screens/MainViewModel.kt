@@ -64,7 +64,11 @@ class MainViewModel(
     var addStopIsLoading by mutableStateOf(false)
         private set
 
-    var isDarkMode by mutableStateOf(false)
+    var lastUpdatedAll by mutableStateOf(0L)
+        private set
+
+    // 0 = system, 1 = light, 2 = dark
+    var themeMode by mutableStateOf(0)
 
     // Reference addition order from repository (used to restore position on unpin)
     private var additionOrder: List<String> = emptyList()
@@ -103,6 +107,7 @@ class MainViewModel(
                 }
             }.collect { list ->
                 additionOrder = list.map { it.busStop.code }
+                lastUpdatedAll = list.maxOfOrNull { it.lastUpdated } ?: lastUpdatedAll
                 val pinnedFirst = list.sortedByDescending { it.isPinned }
                 _savedStops.value = pinnedFirst
                 if (pinnedFirst.isNotEmpty() && pinnedFirst.none { it.services.isNotEmpty() }) {
@@ -229,6 +234,9 @@ class MainViewModel(
                 lastUpdated = if (result.isSuccess) System.currentTimeMillis() else this[index].lastUpdated
             )
         }
+        if (result.isSuccess) {
+            lastUpdatedAll = System.currentTimeMillis()
+        }
     }
 
     fun refreshArrivals(code: String, isAutoRefresh: Boolean = false) {
@@ -266,8 +274,14 @@ class MainViewModel(
         }
     }
 
-    fun toggleDarkMode() {
-        isDarkMode = !isDarkMode
+    fun toggleThemeMode() {
+        themeMode = (themeMode + 1) % 3
+    }
+
+    val themeIcon: String get() = when (themeMode) {
+        1 -> "light"
+        2 -> "dark"
+        else -> "system"
     }
 
     fun toggleSortOrder() {

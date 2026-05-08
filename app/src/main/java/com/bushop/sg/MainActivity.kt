@@ -3,6 +3,7 @@ package com.bushop.sg
 import android.os.Bundle
 import androidx.compose.animation.Crossfade
 import androidx.compose.animation.core.tween
+import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
@@ -30,8 +31,14 @@ class MainActivity : ComponentActivity() {
 
         setContent {
             val viewModel: MainViewModel = viewModel(factory = viewModelFactory)
+            val isDarkTheme = when (viewModel.themeMode) {
+                0 -> isSystemInDarkTheme()
+                1 -> false
+                2 -> true
+                else -> isSystemInDarkTheme()
+            }
             Crossfade(
-                targetState = viewModel.isDarkMode,
+                targetState = isDarkTheme,
                 animationSpec = tween(durationMillis = 400)
             ) { isDark ->
                 BusHopTheme(darkTheme = isDark) {

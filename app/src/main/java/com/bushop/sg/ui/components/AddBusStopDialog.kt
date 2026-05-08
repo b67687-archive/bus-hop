@@ -22,10 +22,12 @@ import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
+import kotlinx.coroutines.delay
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.font.FontWeight
@@ -45,6 +47,13 @@ fun AddBusStopDialog(
     var selectedEntry by remember { mutableStateOf<BusStopEntry?>(null) }
     val displayError = error
 
+    LaunchedEffect(searchQuery) {
+        if (searchQuery.length >= 2) {
+            delay(300)
+            onSearchQueryChanged(searchQuery.trim())
+        }
+    }
+
     AlertDialog(
         onDismissRequest = onDismiss,
         title = { Text("Add Bus Stop") },
@@ -62,9 +71,6 @@ fun AddBusStopDialog(
                     onValueChange = {
                         searchQuery = it
                         selectedEntry = null
-                        if (it.length >= 2) {
-                            onSearchQueryChanged(it)
-                        }
                     },
                     label = { Text("Bus stop code or name") },
                     placeholder = { Text("e.g. 83139 or Thomson") },
@@ -85,7 +91,7 @@ fun AddBusStopDialog(
                     Spacer(modifier = Modifier.height(4.dp))
                     Text(
                         text = displayError,
-                        style = MaterialTheme.typography.labelSmall,
+                        style = MaterialTheme.typography.bodySmall,
                         color = MaterialTheme.colorScheme.error
                     )
                 }
@@ -103,7 +109,7 @@ fun AddBusStopDialog(
                     LazyColumn(
                         modifier = Modifier
                             .fillMaxWidth()
-                            .height((searchResults.size * 52).coerceAtMost(260).dp),
+                            .height(260.dp),
                         verticalArrangement = Arrangement.spacedBy(2.dp)
                     ) {
                         items(searchResults) { entry ->

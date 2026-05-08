@@ -6,21 +6,28 @@ import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.PaddingValues
+import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
+import androidx.compose.material.icons.filled.BrightnessAuto
 import androidx.compose.material.icons.filled.Check
 import androidx.compose.material.icons.filled.DarkMode
+import androidx.compose.material.icons.filled.DirectionsBus
 import androidx.compose.material.icons.filled.LightMode
 import androidx.compose.material.icons.filled.Refresh
 import androidx.compose.material.icons.automirrored.filled.Sort
+import androidx.compose.material.icons.automirrored.outlined.Sort
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.CenterAlignedTopAppBar
 import androidx.compose.material3.ExperimentalMaterial3Api
@@ -42,24 +49,32 @@ import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
-import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.foundation.background
+import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.ui.draw.clip
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import com.bushop.sg.data.local.BusStopEntry
 import com.bushop.sg.ui.components.AddBusStopDialog
 import com.bushop.sg.ui.components.BusStopCard
 import androidx.compose.ui.input.pointer.pointerInput
-import kotlinx.coroutines.launch
+
+private fun formatLastUpdated(timestamp: Long): String {
+    val zdt = java.time.ZonedDateTime.ofInstant(
+        java.time.Instant.ofEpochMilli(timestamp),
+        java.time.ZoneId.systemDefault()
+    )
+    return java.time.format.DateTimeFormatter.ofPattern("HH:mm").format(zdt)
+}
 
 @OptIn(ExperimentalMaterial3Api::class, ExperimentalFoundationApi::class)
 @Composable
 fun MainScreen(viewModel: MainViewModel) {
     val savedStops by viewModel.savedStops.collectAsState()
     val sortByEarliest by viewModel.sortByEarliest.collectAsState()
-    val scope = rememberCoroutineScope()
     var showRefreshMenu by remember { mutableStateOf(false) }
     val snackbarHostState = remember { SnackbarHostState() }
     
@@ -76,24 +91,51 @@ fun MainScreen(viewModel: MainViewModel) {
         topBar = {
             CenterAlignedTopAppBar(
                 title = { 
-                    Text(
-                        text = "BusHop",
-                        style = MaterialTheme.typography.headlineMedium
-                    ) 
+                    Row(
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.Center
+                    ) {
+                        Icon(
+                            imageVector = Icons.Default.DirectionsBus,
+                            contentDescription = null,
+                            modifier = Modifier.size(28.dp),
+                            tint = MaterialTheme.colorScheme.primary
+                        )
+                        Spacer(modifier = Modifier.width(8.dp))
+                        Text(
+                            text = "BusHop",
+                            style = MaterialTheme.typography.headlineMedium
+                        )
+                    }
                 },
                 actions = {
                     IconButton(onClick = { viewModel.toggleSortOrder() }) {
                         Icon(
-                            imageVector = Icons.AutoMirrored.Filled.Sort,
+                            imageVector = if (sortByEarliest) Icons.AutoMirrored.Filled.Sort else Icons.AutoMirrored.Outlined.Sort,
                             contentDescription = "Sort",
                             tint = if (sortByEarliest) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant
                         )
                     }
-                    IconButton(onClick = { viewModel.toggleDarkMode() }) {
+                    IconButton(onClick = { viewModel.toggleThemeMode() }) {
                         Icon(
-                            imageVector = if (viewModel.isDarkMode) Icons.Default.LightMode else Icons.Default.DarkMode,
-                            contentDescription = "Toggle dark mode",
-                            tint = if (viewModel.isDarkMode) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant
+                            imageVector = when (viewModel.themeMode) {
+                                0 -> Icons.Default.BrightnessAuto
+                                1 -> Icons.Default.LightMode
+                                2 -> Icons.Default.DarkMode
+                                else -> Icons.Default.BrightnessAuto
+                            },
+                            contentDescription = when (viewModel.themeMode) {
+                                0 -> "Auto theme"
+                                1 -> "Light mode"
+                                2 -> "Dark mode"
+                                else -> "Auto theme"
+                            },
+                            tint = when (viewModel.themeMode) {
+                                0 -> MaterialTheme.colorScheme.onSurfaceVariant
+                                1 -> MaterialTheme.colorScheme.onSurfaceVariant
+                                2 -> MaterialTheme.colorScheme.primary
+                                else -> MaterialTheme.colorScheme.onSurfaceVariant
+                            }
                         )
                     }
                     Box {
@@ -148,32 +190,31 @@ fun MainScreen(viewModel: MainViewModel) {
             }
         }
     ) { paddingValues ->
-        if (savedStops.isEmpty()) {
-            Box(
-                modifier = Modifier
-                    .fillMaxSize()
-                    .padding(paddingValues),
-                contentAlignment = Alignment.Center
-            ) {
-                Text(
-                    text = "No bus stops saved yet.\nTap + to add your first stop.",
-                    style = MaterialTheme.typography.bodyLarge,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                    textAlign = TextAlign.Center
-                )
-            }
-        } else {
-            LazyColumn(
-                modifier = Modifier
-                    .fillMaxSize()
-                    .padding(paddingValues),
-                contentPadding = PaddingValues(16.dp),
-                verticalArrangement = Arrangement.spacedBy(12.dp)
-            ) {
-                items(
-                    items = savedStops,
-                    key = { it.busStop.code }
-                ) { stopWithArrivals ->
+        Box(modifier = Modifier.fillMaxSize().padding(paddingValues)) {
+            if (savedStops.isEmpty()) {
+                Box(
+                    modifier = Modifier.fillMaxSize(),
+                    contentAlignment = Alignment.Center
+                ) {
+                    Text(
+                        text = "No bus stops saved yet.\nTap + to add your first stop.",
+                        style = MaterialTheme.typography.bodyLarge,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        textAlign = TextAlign.Center
+                    )
+                }
+            } else {
+                LazyColumn(
+                    modifier = Modifier.fillMaxSize(),
+                    contentPadding = PaddingValues(
+                        start = 16.dp, end = 16.dp, top = 16.dp, bottom = 40.dp
+                    ),
+                    verticalArrangement = Arrangement.spacedBy(12.dp)
+                ) {
+                    items(
+                        items = savedStops,
+                        key = { it.busStop.code }
+                    ) { stopWithArrivals ->
                     BusStopCard(
                         busStopCode = stopWithArrivals.busStop.code,
                         busStopName = stopWithArrivals.busStop.name,
@@ -188,25 +229,13 @@ fun MainScreen(viewModel: MainViewModel) {
                         onToggleCollapse = { viewModel.toggleCollapse(stopWithArrivals.busStop.code) },
                         onTogglePin = { viewModel.togglePin(stopWithArrivals.busStop.code) },
                         onDelete = {
-                            if (stopWithArrivals.isPinned) {
-                                scope.launch {
-                                    snackbarHostState.showSnackbar("Unpin the bus stop first")
-                                }
-                            } else {
-                                deleteTarget = stopWithArrivals.busStop.code
-                            }
+                            deleteTarget = stopWithArrivals.busStop.code
                         },
                         modifier = Modifier.pointerInput(stopWithArrivals.busStop.code) {
                             detectTapGestures(
                                 onTap = { viewModel.toggleCollapse(stopWithArrivals.busStop.code) },
                                 onLongPress = {
-                                    if (stopWithArrivals.isPinned) {
-                                        scope.launch {
-                                            snackbarHostState.showSnackbar("Unpin the bus stop first")
-                                        }
-                                    } else {
-                                        deleteTarget = stopWithArrivals.busStop.code
-                                    }
+                                    deleteTarget = stopWithArrivals.busStop.code
                                 }
                             )
                         }
@@ -214,6 +243,23 @@ fun MainScreen(viewModel: MainViewModel) {
                 }
             }
         }
+        if (viewModel.lastUpdatedAll > 0) {
+            Box(
+                modifier = Modifier
+                    .align(Alignment.BottomStart)
+                    .padding(start = 16.dp, bottom = 16.dp)
+                    .clip(RoundedCornerShape(8.dp))
+                    .background(MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.8f))
+                    .padding(horizontal = 10.dp, vertical = 6.dp)
+            ) {
+                Text(
+                    text = "Updated: ${formatLastUpdated(viewModel.lastUpdatedAll)}",
+                    style = MaterialTheme.typography.labelSmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+            }
+        }
+    }
     }
 
     if (viewModel.addStopDialogVisible) {
