@@ -44,6 +44,8 @@ import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.material3.TopAppBarDefaults
+import androidx.compose.animation.animateColorAsState
+import androidx.compose.animation.core.tween
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
@@ -144,7 +146,8 @@ fun MainScreen(viewModel: MainViewModel) {
                     ) {
                         Icon(
                             imageVector = Icons.Default.Refresh,
-                            contentDescription = "Refresh"
+                            contentDescription = "Refresh",
+                            tint = if (viewModel.isRefreshing) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant
                         )
                     }
                     IconButton(onClick = { showSettings = true }) {
@@ -157,7 +160,7 @@ fun MainScreen(viewModel: MainViewModel) {
                 colors = TopAppBarDefaults.centerAlignedTopAppBarColors(
                     containerColor = MaterialTheme.colorScheme.background.copy(alpha = 0.85f),
                     titleContentColor = MaterialTheme.colorScheme.onBackground,
-                    scrolledContainerColor = MaterialTheme.colorScheme.background.copy(alpha = 0.95f)
+                    scrolledContainerColor = MaterialTheme.colorScheme.background
                 )
             )
         },
@@ -214,26 +217,25 @@ fun MainScreen(viewModel: MainViewModel) {
                         onTogglePin = { viewModel.togglePin(stopWithArrivals.busStop.code) },
                         onDelete = {
                             deleteTarget = stopWithArrivals.busStop.code
-                        },
-                        modifier = Modifier.pointerInput(stopWithArrivals.busStop.code) {
-                            detectTapGestures(
-                                onTap = { viewModel.toggleCollapse(stopWithArrivals.busStop.code) },
-                                onLongPress = {
-                                    deleteTarget = stopWithArrivals.busStop.code
-                                }
-                            )
                         }
                     )
                 }
             }
         }
         if (viewModel.lastUpdatedAll > 0) {
+            val pillBg by animateColorAsState(
+                targetValue = if (viewModel.isRefreshing)
+                    MaterialTheme.colorScheme.primary.copy(alpha = 0.2f)
+                else
+                    MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.8f),
+                animationSpec = tween(durationMillis = 300)
+            )
             Box(
                 modifier = Modifier
                     .align(Alignment.BottomStart)
                     .padding(start = 16.dp, bottom = 16.dp)
                     .clip(RoundedCornerShape(8.dp))
-                    .background(MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.8f))
+                    .background(pillBg)
                     .padding(horizontal = 10.dp, vertical = 6.dp)
             ) {
                 Text(
