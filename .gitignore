@@ -51,3 +51,7 @@ proguard/
 # Kotlin
 *.kt
 *.kts
+!domain/src/**/*.kt
+!domain/build.gradle.kts
+!data/src/**/*.kt
+!data/build.gradle.kts
