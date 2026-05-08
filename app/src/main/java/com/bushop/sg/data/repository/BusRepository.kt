@@ -1,6 +1,7 @@
 package com.bushop.sg.data.repository
 
-import com.bushop.sg.data.api.ApiClient
+import com.bushop.sg.data.api.BusArrivalDataSource
+import com.bushop.sg.data.api.RetrofitBusArrivalDataSource
 import com.bushop.sg.data.local.BusStopStorage
 import com.bushop.sg.data.model.BusService
 import com.bushop.sg.data.model.BusStop
@@ -10,7 +11,8 @@ import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.withContext
 
 class BusRepository(
-    private val storage: BusStopStorage
+    private val storage: BusStopStorage,
+    private val dataSource: BusArrivalDataSource = RetrofitBusArrivalDataSource()
 ) {
     val savedBusStops: Flow<List<BusStop>> = storage.savedBusStops
 
@@ -51,14 +53,13 @@ class BusRepository(
 
     suspend fun getBusArrivals(busStopCode: String): Result<List<BusService>> {
         return try {
-            val response = ApiClient.api.getBusArrivals(busStopCode)
+            val response = dataSource.getBusArrivals(busStopCode)
             val services = response.services ?: emptyList()
             storage.saveBusServices(busStopCode, services)
             Result.success(services)
         } catch (e: java.net.UnknownHostException) {
             Result.failure(e)
         } catch (e: java.io.IOException) {
-            // Also catch timeouts, TLS errors, connection resets
             Result.failure(e)
         }
     }

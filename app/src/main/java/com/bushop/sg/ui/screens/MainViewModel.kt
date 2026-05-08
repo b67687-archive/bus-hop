@@ -45,6 +45,7 @@ class MainViewModel(
         private set
 
     private var autoRefreshJob: Job? = null
+    private var saveCollapseJob: Job? = null
     var autoRefreshIntervalSeconds by mutableStateOf(30)
         private set
     
@@ -335,8 +336,10 @@ class MainViewModel(
             _savedStops.value = _savedStops.value.toMutableList().apply {
                 this[index] = this[index].copy(isCollapsed = newCollapsed)
             }
-            // Persist collapse state
-            viewModelScope.launch {
+            // Debounce collapse state persistence (500ms)
+            saveCollapseJob?.cancel()
+            saveCollapseJob = viewModelScope.launch {
+                delay(500)
                 val collapsedCodes = _savedStops.value
                     .filter { it.isCollapsed }
                     .map { it.busStop.code }

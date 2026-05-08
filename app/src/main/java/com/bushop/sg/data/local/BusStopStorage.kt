@@ -13,6 +13,7 @@ import com.google.gson.Gson
 import com.google.gson.reflect.TypeToken
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.withContext
@@ -24,11 +25,15 @@ class BusStopStorage(private val context: Context) {
     private val gson = Gson()
     private val busStopsKey = stringPreferencesKey("saved_bus_stops")
 
-    val savedBusStops: Flow<List<BusStop>> = context.dataStore.data.map { prefs ->
-        val json = prefs[busStopsKey] ?: "[]"
-        try {
+    val savedBusStops: Flow<List<BusStop>> = context.dataStore.data
+        .map { prefs -> parseBusStopList(prefs[busStopsKey]) }
+        .distinctUntilChanged()
+
+    private fun parseBusStopList(json: String?): List<BusStop> {
+        val text = json ?: return emptyList()
+        return try {
             val type = object : TypeToken<List<BusStop>>() {}.type
-            gson.fromJson(json, type) ?: emptyList()
+            gson.fromJson<List<BusStop>>(text, type) ?: emptyList()
         } catch (e: Exception) {
             emptyList()
         }
@@ -72,27 +77,30 @@ class BusStopStorage(private val context: Context) {
 
     fun getBusServicesFlow(): Flow<Map<String, List<BusService>>> {
         val ttlMs = 24 * 60 * 60 * 1000L // 24 hours
-        return context.dataStore.data.map { prefs ->
-            val now = System.currentTimeMillis()
-            val result = mutableMapOf<String, List<BusService>>()
-            prefs.asMap().forEach { (key, value) ->
-                if (key.name.startsWith("services_") && !key.name.endsWith("_ts")) {
-                    val code = key.name.removePrefix("services_")
-                    val tsKey = stringPreferencesKey("services_${code}_ts")
-                    val ts = prefs[tsKey]?.toLongOrNull() ?: 0L
-                    // Skip stale entries older than TTL
-                    if (now - ts > ttlMs) return@forEach
-                    try {
-                        val type = object : TypeToken<List<BusService>>() {}.type
-                        val services: List<BusService> = gson.fromJson(value as String, type) ?: emptyList()
-                        result[code] = services
-                    } catch (e: Exception) {
-                        result[code] = emptyList()
-                    }
+        return context.dataStore.data
+            .map { prefs -> parseServicesMap(prefs, ttlMs) }
+            .distinctUntilChanged()
+    }
+
+    private fun parseServicesMap(prefs: Preferences, ttlMs: Long): Map<String, List<BusService>> {
+        val now = System.currentTimeMillis()
+        val result = mutableMapOf<String, List<BusService>>()
+        prefs.asMap().forEach { (key, value) ->
+            if (key.name.startsWith("services_") && !key.name.endsWith("_ts")) {
+                val code = key.name.removePrefix("services_")
+                val tsKey = stringPreferencesKey("services_${code}_ts")
+                val ts = prefs[tsKey]?.toLongOrNull() ?: 0L
+                if (now - ts > ttlMs) return@forEach
+                try {
+                    val type = object : TypeToken<List<BusService>>() {}.type
+                    val services: List<BusService> = gson.fromJson(value as String, type) ?: emptyList()
+                    result[code] = services
+                } catch (e: Exception) {
+                    result[code] = emptyList()
                 }
             }
-            result
         }
+        return result
     }
 
     suspend fun saveBusServices(code: String, services: List<BusService>) {
@@ -134,9 +142,9 @@ class BusStopStorage(private val context: Context) {
 
     // ── Theme mode ──
 
-    val themeMode: Flow<Int> = context.dataStore.data.map { prefs ->
-        prefs[intPreferencesKey("theme_mode")] ?: 0
-    }
+    val themeMode: Flow<Int> = context.dataStore.data
+        .map { prefs -> prefs[intPreferencesKey("theme_mode")] ?: 0 }
+        .distinctUntilChanged()
 
     suspend fun saveThemeMode(mode: Int) {
         context.dataStore.edit { prefs ->
@@ -146,10 +154,14 @@ class BusStopStorage(private val context: Context) {
 
     // ── Collapsed stops ──
 
-    val collapsedStopCodes: Flow<List<String>> = context.dataStore.data.map { prefs ->
-        val json = prefs[stringPreferencesKey("collapsed_stops")] ?: "[]"
-        try {
-            gson.fromJson(json, object : TypeToken<List<String>>() {}.type) ?: emptyList()
+    val collapsedStopCodes: Flow<List<String>> = context.dataStore.data
+        .map { prefs -> parseCollapsedCodes(prefs[stringPreferencesKey("collapsed_stops")]) }
+        .distinctUntilChanged()
+
+    private fun parseCollapsedCodes(json: String?): List<String> {
+        val text = json ?: return emptyList()
+        return try {
+            gson.fromJson(text, object : TypeToken<List<String>>() {}.type) ?: emptyList()
         } catch (e: Exception) {
             emptyList()
         }
