@@ -75,12 +75,27 @@ class BusStopStorage(private val context: Context) {
         }
     }
 
+    /** Flow of [code -> List<BusService>] for stops with cached data (non-stale). */
     fun getBusServicesFlow(): Flow<Map<String, List<BusService>>> {
-        val ttlMs = 24 * 60 * 60 * 1000L // 24 hours
+        val ttlMs = 24 * 60 * 60 * 1000L
         return context.dataStore.data
             .map { prefs -> parseServicesMap(prefs, ttlMs) }
             .distinctUntilChanged()
     }
+
+    /** Flow of [code -> cachedAt timestamp] for every stop with saved services. */
+    val cachedTimestamps: Flow<Map<String, Long>> = context.dataStore.data
+        .map { prefs ->
+            val result = mutableMapOf<String, Long>()
+            prefs.asMap().forEach { (key, value) ->
+                if (key.name.startsWith("services_") && key.name.endsWith("_ts")) {
+                    val code = key.name.removePrefix("services_").removeSuffix("_ts")
+                    result[code] = (value as String).toLongOrNull() ?: 0L
+                }
+            }
+            result
+        }
+        .distinctUntilChanged()
 
     private fun parseServicesMap(prefs: Preferences, ttlMs: Long): Map<String, List<BusService>> {
         val now = System.currentTimeMillis()

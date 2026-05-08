@@ -2,9 +2,12 @@ package com.bushop.sg.data.repository
 
 import com.bushop.sg.data.api.BusArrivalDataSource
 import com.bushop.sg.data.api.RetrofitBusArrivalDataSource
+import com.bushop.sg.data.api.retrySuspend
 import com.bushop.sg.data.local.BusStopStorage
 import com.bushop.sg.data.model.BusService
 import com.bushop.sg.data.model.BusStop
+import com.bushop.sg.data.model.NetworkResult
+import com.bushop.sg.data.model.toNetworkResult
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.first
@@ -17,6 +20,8 @@ class BusRepository(
     val savedBusStops: Flow<List<BusStop>> = storage.savedBusStops
 
     val cachedBusServices: Flow<Map<String, List<BusService>>> = storage.getBusServicesFlow()
+
+    val cachedTimestamps: Flow<Map<String, Long>> = storage.cachedTimestamps
 
     val collapsedStopCodes: Flow<List<String>> = storage.collapsedStopCodes
 
@@ -51,16 +56,15 @@ class BusRepository(
         storage.evictBusServices(code)
     }
 
-    suspend fun getBusArrivals(busStopCode: String): Result<List<BusService>> {
-        return try {
-            val response = dataSource.getBusArrivals(busStopCode)
-            val services = response.services ?: emptyList()
-            storage.saveBusServices(busStopCode, services)
-            Result.success(services)
-        } catch (e: java.net.UnknownHostException) {
-            Result.failure(e)
-        } catch (e: java.io.IOException) {
-            Result.failure(e)
+    suspend fun getBusArrivals(busStopCode: String): NetworkResult<List<BusService>> {
+        val result = retrySuspend {
+            runCatching {
+                val response = dataSource.getBusArrivals(busStopCode)
+                val services = response.services ?: emptyList()
+                storage.saveBusServices(busStopCode, services)
+                services
+            }
         }
+        return result.toNetworkResult("Fetch arrivals")
     }
 }
