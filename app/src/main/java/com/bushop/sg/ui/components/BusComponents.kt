@@ -59,9 +59,9 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.input.pointer.pointerInput
-import com.bushop.sg.data.model.BusService
-import com.bushop.sg.data.model.BusStopWithArrivals
-import com.bushop.sg.data.model.toDisplayArrival
+import com.bushop.sg.domain.model.BusService
+import com.bushop.sg.domain.model.BusStopWithArrivals
+import com.bushop.sg.domain.model.toDisplayArrival
 
 @OptIn(ExperimentalLayoutApi::class)
 @Composable

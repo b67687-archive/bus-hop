@@ -67,6 +67,9 @@ tasks.matching { it.name == "assembleDebug" }.configureEach {
 }
 
 dependencies {
+    implementation(project(":domain"))
+    implementation(project(":data"))
+
     val composeBom = platform(libs.compose.bom)
     implementation(composeBom)
 
@@ -82,15 +85,6 @@ dependencies {
 
     implementation(libs.lifecycle.viewmodel.compose)
     implementation(libs.lifecycle.runtime.compose)
-
-    implementation(libs.retrofit)
-    implementation(libs.retrofit.converter.gson)
-    implementation(libs.okhttp)
-    implementation(libs.okhttp.logging)
-
-    implementation(libs.coroutines.android)
-
-    implementation(libs.datastore.preferences)
 
     debugImplementation(libs.compose.ui.tooling)
     debugImplementation(libs.compose.ui.test.manifest)

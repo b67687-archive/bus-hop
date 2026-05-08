@@ -16,3 +16,5 @@ dependencyResolutionManagement {
 
 rootProject.name = "BusHop"
 include(":app")
+include(":domain")
+include(":data")
