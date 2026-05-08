@@ -234,7 +234,12 @@ fun MainScreen(viewModel: MainViewModel) {
                     .padding(horizontal = 10.dp, vertical = 6.dp)
             ) {
                 Text(
-                    text = "Updated: ${formatLastUpdated(viewModel.lastUpdatedAll)}",
+                    text = buildString {
+                        append("Updated: ${formatLastUpdated(viewModel.lastUpdatedAll)}")
+                        if (savedStops.any { it.isStale }) {
+                            append("  •  Some data may be stale")
+                        }
+                    },
                     style = MaterialTheme.typography.labelSmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant
                 )
