@@ -11,7 +11,7 @@ APP_BASE_NAME=${0##*/}
 
 CLASSPATH=$APP_HOME/gradle/wrapper/gradle-wrapper.jar
 
-DEFAULT_JVM_OPTS='-Dfile.encoding=UTF-8 "-Xmx64m" "-Xms64m"'
+DEFAULT_JVM_OPTS='-Dfile.encoding=UTF-8 -Xmx64m -Xms64m'
 
 JAVACMD=java
 

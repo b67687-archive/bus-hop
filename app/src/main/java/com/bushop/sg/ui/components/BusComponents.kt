@@ -1,6 +1,13 @@
 package com.bushop.sg.ui.components
 
+
 import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.core.FastOutSlowInEasing
+import androidx.compose.animation.core.tween
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
+import androidx.compose.animation.shrinkVertically
+import androidx.compose.animation.expandVertically
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
@@ -15,6 +22,7 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.CloudOff
@@ -25,15 +33,16 @@ import androidx.compose.material.icons.outlined.Accessibility
 import androidx.compose.material.icons.outlined.PushPin
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
+import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
-import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
+import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -48,13 +57,13 @@ import com.bushop.sg.data.model.toDisplayArrival
 @Composable
 fun BusStopCard(
     busStopCode: String,
-    busStopName: String = "",
+    busStopName: String,
     services: List<BusService>,
     isLoading: Boolean,
     error: String?,
     isOffline: Boolean,
-    lastUpdated: Long = 0L,
-    isCollapsed: Boolean = false,
+    lastUpdated: Long,
+    isCollapsed: Boolean,
     isPinned: Boolean = false,
     onRefresh: () -> Unit,
     onToggleCollapse: () -> Unit,
@@ -70,9 +79,7 @@ fun BusStopCard(
         ),
         elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
     ) {
-        Column(
-            modifier = Modifier.padding(16.dp)
-        ) {
+        Column(modifier = Modifier.padding(16.dp)) {
             Row(
                 modifier = Modifier.fillMaxWidth(),
                 horizontalArrangement = Arrangement.SpaceBetween,
@@ -83,53 +90,72 @@ fun BusStopCard(
                         Text(
                             text = busStopName,
                             style = MaterialTheme.typography.titleLarge,
-                            fontWeight = FontWeight.Bold
+                            fontWeight = FontWeight.Bold,
+                            color = MaterialTheme.colorScheme.onSurface
                         )
-                        Text(
-                            text = "Bus Stop $busStopCode",
-                            style = MaterialTheme.typography.labelSmall,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant
-                        )
-                    } else {
-                        Text(
-                            text = "Bus Stop $busStopCode",
-                            style = MaterialTheme.typography.titleLarge,
-                            fontWeight = FontWeight.Bold
-                        )
+                        Spacer(modifier = Modifier.height(2.dp))
                     }
-                    if (services.isNotEmpty()) {
+                    Row(verticalAlignment = Alignment.CenterVertically) {
                         Text(
-                            text = "${services.size} buses",
-                            style = MaterialTheme.typography.labelSmall,
+                            text = busStopCode,
+                            style = MaterialTheme.typography.labelLarge,
+                            fontWeight = FontWeight.Medium,
                             color = MaterialTheme.colorScheme.onSurfaceVariant
                         )
+                        if (services.isNotEmpty()) {
+                            Text(
+                                text = "  ${services.size} bus${if (services.size != 1) "es" else ""}",
+                                style = MaterialTheme.typography.labelSmall,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant
+                            )
+                        }
                     }
                 }
                 Row(verticalAlignment = Alignment.CenterVertically) {
                     if (isLoading) {
-                        Text(
-                            text = "Loading...",
-                            style = MaterialTheme.typography.labelMedium,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                        CircularProgressIndicator(
+                            modifier = Modifier.size(16.dp),
+                            strokeWidth = 2.dp
                         )
                     }
-                    IconButton(onClick = onTogglePin) {
+                    Box(
+                        modifier = Modifier
+                            .size(32.dp)
+                            .clip(CircleShape)
+                            .clickable(onClick = onTogglePin),
+                        contentAlignment = Alignment.Center
+                    ) {
                         Icon(
                             imageVector = if (isPinned) Icons.Filled.PushPin else Icons.Outlined.PushPin,
                             contentDescription = if (isPinned) "Unpin" else "Pin",
+                            modifier = Modifier.size(16.dp),
                             tint = if (isPinned) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant
                         )
                     }
-                    IconButton(onClick = onToggleCollapse) {
+                    Box(
+                        modifier = Modifier
+                            .size(32.dp)
+                            .clip(CircleShape)
+                            .clickable(onClick = onToggleCollapse),
+                        contentAlignment = Alignment.Center
+                    ) {
                         Icon(
                             imageVector = if (isCollapsed) Icons.Default.ExpandMore else Icons.Default.ExpandLess,
-                            contentDescription = if (isCollapsed) "Expand" else "Collapse"
+                            contentDescription = if (isCollapsed) "Expand" else "Collapse",
+                            modifier = Modifier.size(20.dp)
                         )
                     }
                 }
             }
 
-            AnimatedVisibility(visible = isCollapsed && services.isNotEmpty()) {
+            val easing = FastOutSlowInEasing
+            AnimatedVisibility(
+                visible = isCollapsed && services.isNotEmpty(),
+                enter = fadeIn(animationSpec = tween(durationMillis = 280, easing = easing)) +
+                        expandVertically(animationSpec = tween(durationMillis = 280, easing = easing)),
+                exit = fadeOut(animationSpec = tween(durationMillis = 150, easing = easing)) +
+                        shrinkVertically(animationSpec = tween(durationMillis = 150, easing = easing))
+            ) {
                 FlowRow(
                     modifier = Modifier
                         .fillMaxWidth()
@@ -143,10 +169,16 @@ fun BusStopCard(
                 }
             }
 
-            AnimatedVisibility(visible = !isCollapsed) {
+            AnimatedVisibility(
+                visible = !isCollapsed,
+                enter = fadeIn(animationSpec = tween(durationMillis = 280, easing = easing)) +
+                        expandVertically(animationSpec = tween(durationMillis = 280, easing = easing)),
+                exit = fadeOut(animationSpec = tween(durationMillis = 150, easing = easing)) +
+                        shrinkVertically(animationSpec = tween(durationMillis = 150, easing = easing))
+            ) {
                 Column {
                     Spacer(modifier = Modifier.height(8.dp))
-                    
+
                     when {
                         isOffline -> {
                             OfflineBanner(onRetry = onRefresh)
@@ -186,7 +218,7 @@ fun BusStopCard(
 private fun CollapsedBusChip(service: BusService) {
     val arrival = service.next?.toDisplayArrival()
     val eta = arrival?.eta ?: "--"
-    
+
     Row(
         modifier = Modifier
             .clip(RoundedCornerShape(8.dp))
@@ -200,11 +232,6 @@ private fun CollapsedBusChip(service: BusService) {
             style = MaterialTheme.typography.labelMedium,
             fontWeight = FontWeight.Bold,
             color = MaterialTheme.colorScheme.onPrimaryContainer
-        )
-        Text(
-            text = "|",
-            style = MaterialTheme.typography.labelSmall,
-            color = MaterialTheme.colorScheme.onPrimaryContainer.copy(alpha = 0.5f)
         )
         Box(
             modifier = Modifier
@@ -314,7 +341,7 @@ fun BusServiceRow(service: BusService) {
                     }
                 }
             }
-            
+
             service.next?.let { next ->
                 val arrival = next.toDisplayArrival()
                 Text(
@@ -374,8 +401,8 @@ fun BusServiceRow(service: BusService) {
                 val arrival3 = next3.toDisplayArrival()
                 Text(
                     text = arrival3.eta,
-                    style = MaterialTheme.typography.bodySmall,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.7f),
+                    style = MaterialTheme.typography.labelSmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.6f),
                     textAlign = TextAlign.End
                 )
             }
@@ -384,23 +411,30 @@ fun BusServiceRow(service: BusService) {
 }
 
 @Composable
-fun OperatorBadge(operator: String) {
-    val (bgColor, text) = when (operator) {
-        "SBST" -> Color(0xFF0055A4) to "SBS"
-        "SMRT" -> Color(0xFF003D7C) to "SMRT"
-        "TTS" -> Color(0xFF8B0000) to "TTS"
-        "GAS" -> Color(0xFF6B8E23) to "GAS"
-        else -> Color(0xFF666666) to operator
+private fun OperatorBadge(operator: String) {
+    val color = when (operator) {
+        "SBST" -> Color(0xFF0055A4)
+        "SMRT" -> Color(0xFF003D7C)
+        "TTS" -> Color(0xFF8B0000)
+        "GAS" -> Color(0xFF6B8E23)
+        else -> Color(0xFF666666)
+    }
+    val label = when (operator) {
+        "SBST" -> "SBS"
+        "SMRT" -> "SMRT"
+        "TTS" -> "TTS"
+        "GAS" -> "GAS"
+        else -> operator
     }
 
     Box(
         modifier = Modifier
             .clip(RoundedCornerShape(4.dp))
-            .background(bgColor)
+            .background(color)
             .padding(horizontal = 6.dp, vertical = 2.dp)
     ) {
         Text(
-            text = text,
+            text = label,
             style = MaterialTheme.typography.labelSmall,
             fontWeight = FontWeight.Bold,
             color = Color.White
@@ -409,6 +443,9 @@ fun OperatorBadge(operator: String) {
 }
 
 private fun formatLastUpdated(timestamp: Long): String {
-    val sdf = java.text.SimpleDateFormat("HH:mm", java.util.Locale.getDefault())
-    return sdf.format(java.util.Date(timestamp))
+    val zdt = java.time.ZonedDateTime.ofInstant(
+        java.time.Instant.ofEpochMilli(timestamp),
+        java.time.ZoneId.systemDefault()
+    )
+    return java.time.format.DateTimeFormatter.ofPattern("HH:mm").format(zdt)
 }

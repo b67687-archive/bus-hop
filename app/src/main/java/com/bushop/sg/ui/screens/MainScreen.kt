@@ -1,8 +1,8 @@
 package com.bushop.sg.ui.screens
 
+
 import androidx.compose.foundation.ExperimentalFoundationApi
-import androidx.compose.foundation.clickable
-import androidx.compose.foundation.combinedClickable
+import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -17,25 +17,27 @@ import androidx.compose.foundation.lazy.items
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.Check
+import androidx.compose.material.icons.filled.DarkMode
+import androidx.compose.material.icons.filled.LightMode
 import androidx.compose.material.icons.filled.Refresh
-import androidx.compose.material.icons.filled.Settings
-import androidx.compose.material.icons.filled.Sort
+import androidx.compose.material.icons.automirrored.filled.Sort
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.CenterAlignedTopAppBar
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.FloatingActionButton
-import androidx.compose.material3.HorizontalDivider
+import androidx.compose.material3.DropdownMenu
+import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
-import androidx.compose.material3.ListItem
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.ModalBottomSheet
 import androidx.compose.material3.Scaffold
+import androidx.compose.material3.SnackbarHost
+import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.material3.TopAppBarDefaults
-import androidx.compose.material3.rememberModalBottomSheetState
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -46,21 +48,31 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
+import com.bushop.sg.data.local.BusStopEntry
 import com.bushop.sg.ui.components.AddBusStopDialog
 import com.bushop.sg.ui.components.BusStopCard
+import androidx.compose.ui.input.pointer.pointerInput
 import kotlinx.coroutines.launch
 
 @OptIn(ExperimentalMaterial3Api::class, ExperimentalFoundationApi::class)
 @Composable
 fun MainScreen(viewModel: MainViewModel) {
     val savedStops by viewModel.savedStops.collectAsState()
+    val sortByEarliest by viewModel.sortByEarliest.collectAsState()
     val scope = rememberCoroutineScope()
-    var showSettings by remember { mutableStateOf(false) }
-    val sheetState = rememberModalBottomSheetState()
+    var showRefreshMenu by remember { mutableStateOf(false) }
+    val snackbarHostState = remember { SnackbarHostState() }
     
     var deleteTarget by remember { mutableStateOf<String?>(null) }
 
+    LaunchedEffect(Unit) {
+        viewModel.snackbarMessage.collect { message ->
+            snackbarHostState.showSnackbar(message)
+        }
+    }
+
     Scaffold(
+        snackbarHost = { SnackbarHost(snackbarHostState) },
         topBar = {
             CenterAlignedTopAppBar(
                 title = { 
@@ -72,21 +84,49 @@ fun MainScreen(viewModel: MainViewModel) {
                 actions = {
                     IconButton(onClick = { viewModel.toggleSortOrder() }) {
                         Icon(
-                            imageVector = Icons.Default.Sort,
-                            contentDescription = "Sort"
+                            imageVector = Icons.AutoMirrored.Filled.Sort,
+                            contentDescription = "Sort",
+                            tint = if (sortByEarliest) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant
                         )
                     }
-                    IconButton(onClick = { showSettings = true }) {
+                    IconButton(onClick = { viewModel.toggleDarkMode() }) {
                         Icon(
-                            imageVector = Icons.Default.Settings,
-                            contentDescription = "Settings"
+                            imageVector = if (viewModel.isDarkMode) Icons.Default.LightMode else Icons.Default.DarkMode,
+                            contentDescription = "Toggle dark mode",
+                            tint = if (viewModel.isDarkMode) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant
                         )
                     }
-                    IconButton(onClick = { viewModel.refreshAll() }) {
-                        Icon(
-                            imageVector = Icons.Default.Refresh,
-                            contentDescription = "Refresh all"
-                        )
+                    Box {
+                        IconButton(onClick = { showRefreshMenu = true }) {
+                            Icon(
+                                imageVector = Icons.Default.Refresh,
+                                contentDescription = "Refresh"
+                            )
+                        }
+                        DropdownMenu(
+                            expanded = showRefreshMenu,
+                            onDismissRequest = { showRefreshMenu = false }
+                        ) {
+                            val intervals = listOf(0 to "Off", 30 to "30s", 60 to "1m", 120 to "2m", 300 to "5m")
+                            intervals.forEach { (seconds, label) ->
+                                DropdownMenuItem(
+                                    text = { Text(label) },
+                                    onClick = {
+                                        viewModel.setAutoRefreshInterval(seconds)
+                                        showRefreshMenu = false
+                                    },
+                                    trailingIcon = {
+                                        if (viewModel.autoRefreshIntervalSeconds == seconds) {
+                                            Icon(
+                                                imageVector = Icons.Default.Check,
+                                                contentDescription = null,
+                                                tint = MaterialTheme.colorScheme.primary
+                                            )
+                                        }
+                                    }
+                                )
+                            }
+                        }
                     }
                 },
                 colors = TopAppBarDefaults.centerAlignedTopAppBarColors(
@@ -147,11 +187,29 @@ fun MainScreen(viewModel: MainViewModel) {
                         onRefresh = { viewModel.refreshArrivals(stopWithArrivals.busStop.code) },
                         onToggleCollapse = { viewModel.toggleCollapse(stopWithArrivals.busStop.code) },
                         onTogglePin = { viewModel.togglePin(stopWithArrivals.busStop.code) },
-                        onDelete = { deleteTarget = stopWithArrivals.busStop.code },
-                        modifier = Modifier.combinedClickable(
-                            onClick = { viewModel.toggleCollapse(stopWithArrivals.busStop.code) },
-                            onLongClick = { deleteTarget = stopWithArrivals.busStop.code }
-                        )
+                        onDelete = {
+                            if (stopWithArrivals.isPinned) {
+                                scope.launch {
+                                    snackbarHostState.showSnackbar("Unpin the bus stop first")
+                                }
+                            } else {
+                                deleteTarget = stopWithArrivals.busStop.code
+                            }
+                        },
+                        modifier = Modifier.pointerInput(stopWithArrivals.busStop.code) {
+                            detectTapGestures(
+                                onTap = { viewModel.toggleCollapse(stopWithArrivals.busStop.code) },
+                                onLongPress = {
+                                    if (stopWithArrivals.isPinned) {
+                                        scope.launch {
+                                            snackbarHostState.showSnackbar("Unpin the bus stop first")
+                                        }
+                                    } else {
+                                        deleteTarget = stopWithArrivals.busStop.code
+                                    }
+                                }
+                            )
+                        }
                     )
                 }
             }
@@ -159,60 +217,20 @@ fun MainScreen(viewModel: MainViewModel) {
     }
 
     if (viewModel.addStopDialogVisible) {
+        var searchResults by remember { mutableStateOf<List<BusStopEntry>>(emptyList()) }
+
         AddBusStopDialog(
             error = viewModel.addStopError,
+            isLoading = viewModel.addStopIsLoading,
+            searchResults = searchResults,
+            onSearchQueryChanged = { query ->
+                searchResults = viewModel.searchBusStops(query)
+            },
             onDismiss = { viewModel.hideAddStopDialog() },
             onConfirm = { code, name ->
                 viewModel.addBusStop(code, name)
             }
         )
-    }
-
-    if (showSettings) {
-        ModalBottomSheet(
-            onDismissRequest = { showSettings = false },
-            sheetState = sheetState
-        ) {
-            Column(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(bottom = 32.dp)
-            ) {
-                Text(
-                    text = "Auto Refresh",
-                    style = MaterialTheme.typography.titleMedium,
-                    modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp)
-                )
-                Text(
-                    text = "Automatically refresh bus timings",
-                    style = MaterialTheme.typography.bodySmall,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                    modifier = Modifier.padding(horizontal = 16.dp)
-                )
-                Spacer(modifier = Modifier.height(8.dp))
-                HorizontalDivider()
-                
-                val intervals = listOf(0 to "Off", 30 to "30 seconds", 60 to "1 minute", 120 to "2 minutes", 300 to "5 minutes")
-                intervals.forEach { (seconds, label) ->
-                    ListItem(
-                        headlineContent = { Text(label) },
-                        trailingContent = {
-                            if (viewModel.autoRefreshIntervalSeconds == seconds) {
-                                Icon(
-                                    imageVector = Icons.Default.Check,
-                                    contentDescription = null,
-                                    tint = MaterialTheme.colorScheme.primary
-                                )
-                            }
-                        },
-                        modifier = Modifier.clickable {
-                            viewModel.setAutoRefreshInterval(seconds)
-                            scope.launch { sheetState.hide(); showSettings = false }
-                        }
-                    )
-                }
-            }
-        }
     }
 
     if (deleteTarget != null) {

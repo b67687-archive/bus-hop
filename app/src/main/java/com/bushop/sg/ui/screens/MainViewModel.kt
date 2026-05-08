@@ -6,14 +6,18 @@ import androidx.compose.runtime.setValue
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.ViewModelProvider
 import androidx.lifecycle.viewModelScope
+import com.bushop.sg.data.local.BusStopIndex
 import com.bushop.sg.data.local.DuplicateStopException
 import com.bushop.sg.data.model.BusService
 import com.bushop.sg.data.model.BusStop
 import com.bushop.sg.data.repository.BusRepository
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
+import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.SharedFlow
 import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.asSharedFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.launch
@@ -30,7 +34,10 @@ data class BusStopWithArrivals(
     val isPinned: Boolean = false
 )
 
-class MainViewModel(private val repository: BusRepository) : ViewModel() {
+class MainViewModel(
+    private val repository: BusRepository,
+    private val busStopIndex: BusStopIndex
+) : ViewModel() {
 
     private val _savedStops = MutableStateFlow<List<BusStopWithArrivals>>(emptyList())
     val savedStops: StateFlow<List<BusStopWithArrivals>> = _savedStops.asStateFlow()
@@ -45,21 +52,47 @@ class MainViewModel(private val repository: BusRepository) : ViewModel() {
     var autoRefreshIntervalSeconds by mutableStateOf(30)
         private set
     
-    var sortByEarliest by mutableStateOf(false)
+    private val _sortByEarliest = MutableStateFlow(false)
+    val sortByEarliest: StateFlow<Boolean> = _sortByEarliest.asStateFlow()
+
+    private val lastRefreshTimestamps = mutableMapOf<String, Long>()
+    private val refreshCooldownMs = 30_000L
+
+    private val _snackbarMessage = MutableSharedFlow<String>(extraBufferCapacity = 1)
+    val snackbarMessage: SharedFlow<String> = _snackbarMessage.asSharedFlow()
+
+    var addStopIsLoading by mutableStateOf(false)
         private set
+
+    var isDarkMode by mutableStateOf(false)
+
+    // Reference addition order from repository (used to restore position on unpin)
+    private var additionOrder: List<String> = emptyList()
 
     init {
         viewModelScope.launch {
             combine(
                 repository.savedBusStops,
-                repository.cachedBusServices
-            ) { stops, cached ->
+                repository.cachedBusServices,
+                _sortByEarliest
+            ) { stops, cached, sortByEarliest ->
                 stops.map { stop ->
                     val cachedServices = cached[stop.code] ?: emptyList()
                     val existing = _savedStops.value.find { it.busStop.code == stop.code }
+                    val sortedServices = if (sortByEarliest) {
+                        cachedServices.sortedBy { service ->
+                            when {
+                                service.next == null -> Long.MAX_VALUE
+                                service.next.durationMs < 60000 -> 0L
+                                else -> service.next.durationMs
+                            }
+                        }
+                    } else {
+                        cachedServices
+                    }
                     BusStopWithArrivals(
                         busStop = stop,
-                        services = cachedServices,
+                        services = sortedServices,
                         isLoading = existing?.isLoading ?: false,
                         error = existing?.error,
                         isOffline = existing?.isOffline ?: false,
@@ -69,9 +102,11 @@ class MainViewModel(private val repository: BusRepository) : ViewModel() {
                     )
                 }
             }.collect { list ->
-                _savedStops.value = list
-                if (list.isNotEmpty() && list.none { it.services.isNotEmpty() }) {
-                    refreshAll()
+                additionOrder = list.map { it.busStop.code }
+                val pinnedFirst = list.sortedByDescending { it.isPinned }
+                _savedStops.value = pinnedFirst
+                if (pinnedFirst.isNotEmpty() && pinnedFirst.none { it.services.isNotEmpty() }) {
+                    refreshAll(isAutoRefresh = true)
                 }
             }
         }
@@ -82,6 +117,7 @@ class MainViewModel(private val repository: BusRepository) : ViewModel() {
                 startAutoRefresh()
             }
         }
+
     }
 
     fun showAddStopDialog() {
@@ -89,27 +125,64 @@ class MainViewModel(private val repository: BusRepository) : ViewModel() {
         addStopDialogVisible = true
     }
 
+    fun searchBusStops(query: String) = busStopIndex.search(query)
+
+    fun findBusStopByCode(code: String) = busStopIndex.findByCode(code)
+
     fun hideAddStopDialog() {
         addStopDialogVisible = false
         addStopError = null
+        addStopIsLoading = false
     }
 
     fun addBusStop(code: String, name: String = "") {
+        // Guard against rapid double-taps
+        if (addStopIsLoading) return
+
         viewModelScope.launch {
             val formattedCode = code.trim()
             if (formattedCode.length == 5 && formattedCode.all { it.isDigit() }) {
-                val result = repository.addBusStop(BusStop(code = formattedCode, name = name))
+                addStopIsLoading = true
+                addStopError = null
+
+                // Validate stop exists by fetching arrivals first
+                val arrivalResult = try {
+                    repository.getBusArrivals(formattedCode)
+                } catch (e: Exception) {
+                    addStopError = "Could not verify bus stop. Check your connection."
+                    addStopIsLoading = false
+                    return@launch
+                }
+                if (arrivalResult.isFailure) {
+                    addStopError = "Bus stop not found. Check the code and try again."
+                    addStopIsLoading = false
+                    return@launch
+                }
+                val services = arrivalResult.getOrNull()
+                if (services.isNullOrEmpty()) {
+                    addStopError = "No bus services found at this stop."
+                    addStopIsLoading = false
+                    return@launch
+                }
+
+                val result = try {
+                    repository.addBusStop(BusStop(code = formattedCode, name = name))
+                } catch (e: Exception) {
+                    addStopError = "Failed to save bus stop."
+                    addStopIsLoading = false
+                    return@launch
+                }
                 if (result.isFailure) {
                     if (result.exceptionOrNull() is DuplicateStopException) {
                         addStopError = "Bus stop already exists"
                     } else {
-                        addStopError = result.exceptionOrNull()?.message
+                        addStopError = result.exceptionOrNull()?.message ?: "Failed to add stop"
                     }
+                    addStopIsLoading = false
                     return@launch
                 }
+                addStopIsLoading = false
                 hideAddStopDialog()
-                delay(300)
-                refreshArrivals(formattedCode)
             } else {
                 addStopError = "Invalid bus stop code"
             }
@@ -122,34 +195,62 @@ class MainViewModel(private val repository: BusRepository) : ViewModel() {
         }
     }
 
-    fun refreshArrivals(code: String) {
-        viewModelScope.launch {
-            val index = _savedStops.value.indexOfFirst { it.busStop.code == code }
-            if (index != -1) {
-                _savedStops.value = _savedStops.value.toMutableList().apply {
-                    this[index] = this[index].copy(isLoading = true, error = null, isOffline = false)
-                }
+    private suspend fun refreshArrivalsInternal(code: String, isAutoRefresh: Boolean) {
+        val index = _savedStops.value.indexOfFirst { it.busStop.code == code }
+        if (index == -1) return
 
-                val result = repository.getBusArrivals(code)
-                val isOffline = result.exceptionOrNull() is UnknownHostException ||
-                        result.exceptionOrNull()?.cause is UnknownHostException
+        if (!isAutoRefresh) {
+            _savedStops.value = _savedStops.value.toMutableList().apply {
+                this[index] = this[index].copy(isLoading = true, error = null, isOffline = false)
+            }
+        }
 
+        val result = try {
+            repository.getBusArrivals(code)
+        } catch (e: Exception) {
+            // Ensure loading state is cleared even on unexpected exceptions
+            if (!isAutoRefresh) {
                 _savedStops.value = _savedStops.value.toMutableList().apply {
-                    this[index] = this[index].copy(
-                        services = result.getOrNull() ?: this[index].services,
-                        isLoading = false,
-                        error = if (isOffline) null else result.exceptionOrNull()?.message,
-                        isOffline = isOffline,
-                        lastUpdated = if (result.isSuccess) System.currentTimeMillis() else this[index].lastUpdated
-                    )
+                    this[index] = this[index].copy(isLoading = false, error = e.message)
                 }
             }
+            return
+        }
+
+        val isOffline = result.exceptionOrNull() is UnknownHostException ||
+                result.exceptionOrNull()?.cause is UnknownHostException
+
+        _savedStops.value = _savedStops.value.toMutableList().apply {
+            this[index] = this[index].copy(
+                services = result.getOrNull() ?: this[index].services,
+                isLoading = false,
+                error = if (isOffline || isAutoRefresh) null else result.exceptionOrNull()?.message,
+                isOffline = isOffline,
+                lastUpdated = if (result.isSuccess) System.currentTimeMillis() else this[index].lastUpdated
+            )
         }
     }
 
-    fun refreshAll() {
-        _savedStops.value.forEach { stop ->
-            refreshArrivals(stop.busStop.code)
+    fun refreshArrivals(code: String, isAutoRefresh: Boolean = false) {
+        val now = System.currentTimeMillis()
+        val lastRefresh = lastRefreshTimestamps[code] ?: 0L
+        if (!isAutoRefresh && now - lastRefresh < refreshCooldownMs) return
+        lastRefreshTimestamps[code] = now
+
+        viewModelScope.launch {
+            refreshArrivalsInternal(code, isAutoRefresh)
+        }
+    }
+
+    fun refreshAll(isAutoRefresh: Boolean = false) {
+        viewModelScope.launch {
+            _savedStops.value.forEach { stop ->
+                val now = System.currentTimeMillis()
+                val lastRefresh = lastRefreshTimestamps[stop.busStop.code] ?: 0L
+                if (!isAutoRefresh && now - lastRefresh < refreshCooldownMs) return@forEach
+                lastRefreshTimestamps[stop.busStop.code] = now
+                refreshArrivalsInternal(stop.busStop.code, isAutoRefresh)
+            }
         }
     }
 
@@ -165,23 +266,12 @@ class MainViewModel(private val repository: BusRepository) : ViewModel() {
         }
     }
 
+    fun toggleDarkMode() {
+        isDarkMode = !isDarkMode
+    }
+
     fun toggleSortOrder() {
-        sortByEarliest = !sortByEarliest
-        
-        val sorted = if (sortByEarliest) {
-            _savedStops.value.sortedBy { stop ->
-                val first = stop.services.firstOrNull()?.next
-                when {
-                    first == null -> Long.MAX_VALUE
-                    first.durationMs < 60000 -> 0L
-                    else -> first.durationMs
-                }
-            }
-        } else {
-            _savedStops.value.sortedBy { it.busStop.code }
-        }
-        
-        _savedStops.value = sorted
+        _sortByEarliest.value = !_sortByEarliest.value
     }
 
     fun toggleCollapse(code: String) {
@@ -196,8 +286,25 @@ class MainViewModel(private val repository: BusRepository) : ViewModel() {
     fun togglePin(code: String) {
         val index = _savedStops.value.indexOfFirst { it.busStop.code == code }
         if (index != -1) {
+            val wasPinned = _savedStops.value[index].isPinned
             _savedStops.value = _savedStops.value.toMutableList().apply {
                 this[index] = this[index].copy(isPinned = !this[index].isPinned)
+            }.let { list ->
+                val pinned = list.filter { it.isPinned }
+                val unpinned = list.filter { !it.isPinned }
+                if (wasPinned) {
+                    // Unpinning: restore to addition order among unpinned stops
+                    val order = additionOrder.filter { code2 ->
+                        unpinned.any { it.busStop.code == code2 }
+                    }
+                    val sorted = order.mapNotNull { code2 ->
+                        unpinned.find { it.busStop.code == code2 }
+                    }
+                    pinned + sorted
+                } else {
+                    // Pinning: move to top, leave rest in their current order
+                    pinned + unpinned
+                }
             }
         }
     }
@@ -207,7 +314,7 @@ class MainViewModel(private val repository: BusRepository) : ViewModel() {
         autoRefreshJob = viewModelScope.launch {
             while (true) {
                 delay(autoRefreshIntervalSeconds * 1000L)
-                refreshAll()
+                refreshAll(isAutoRefresh = true)
             }
         }
     }
@@ -222,10 +329,13 @@ class MainViewModel(private val repository: BusRepository) : ViewModel() {
         stopAutoRefresh()
     }
 
-    class Factory(private val repository: BusRepository) : ViewModelProvider.Factory {
+    class Factory(
+        private val repository: BusRepository,
+        private val busStopIndex: BusStopIndex
+    ) : ViewModelProvider.Factory {
         @Suppress("UNCHECKED_CAST")
         override fun <T : ViewModel> create(modelClass: Class<T>): T {
-            return MainViewModel(repository) as T
+            return MainViewModel(repository, busStopIndex) as T
         }
     }
 }

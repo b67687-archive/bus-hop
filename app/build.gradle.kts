@@ -53,6 +53,17 @@ android {
     }
 }
 
+tasks.matching { it.name == "assembleDebug" }.configureEach {
+    doLast {
+        val apk = layout.buildDirectory.file("outputs/apk/debug/app-debug.apk").get().asFile
+        if (apk.exists()) {
+            val renamed = File(apk.parentFile, "app-debug-bus-hop.apk")
+            apk.renameTo(renamed)
+            logger.lifecycle("APK renamed to app-debug-bus-hop.apk")
+        }
+    }
+}
+
 dependencies {
     val composeBom = platform("androidx.compose:compose-bom:2024.02.00")
     implementation(composeBom)
@@ -84,4 +95,8 @@ dependencies {
 
     debugImplementation("androidx.compose.ui:ui-tooling")
     debugImplementation("androidx.compose.ui:ui-test-manifest")
+
+    testImplementation("junit:junit:4.13.2")
+    testImplementation("org.jetbrains.kotlinx:kotlinx-coroutines-test:1.8.0")
+    testImplementation("io.mockk:mockk:1.13.9")
 }

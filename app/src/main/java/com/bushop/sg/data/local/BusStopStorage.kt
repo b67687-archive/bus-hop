@@ -1,6 +1,7 @@
 package com.bushop.sg.data.local
 
 import android.content.Context
+import android.content.SharedPreferences
 import androidx.datastore.core.DataStore
 import androidx.datastore.preferences.core.Preferences
 import androidx.datastore.preferences.core.edit
@@ -17,13 +18,6 @@ import kotlinx.coroutines.flow.map
 
 private val Context.dataStore: DataStore<Preferences> by preferencesDataStore(name = "bushop_prefs")
 
-data class BusStopWithData(
-    val code: String,
-    val name: String = "",
-    val servicesJson: String = "[]",
-    val lastUpdated: Long = 0L
-)
-
 class BusStopStorage(private val context: Context) {
 
     private val gson = Gson()
@@ -31,13 +25,20 @@ class BusStopStorage(private val context: Context) {
         .setKeyScheme(MasterKey.KeyScheme.AES256_GCM)
         .build()
     
-    private val encryptedPrefs = EncryptedSharedPreferences.create(
-        context,
-        "bushop_encrypted",
-        masterKey,
-        EncryptedSharedPreferences.PrefKeyEncryptionScheme.AES256_SIV,
-        EncryptedSharedPreferences.PrefValueEncryptionScheme.AES256_GCM
-    )
+    private val encryptedPrefs: SharedPreferences = try {
+        EncryptedSharedPreferences.create(
+            context,
+            "bushop_encrypted",
+            masterKey,
+            EncryptedSharedPreferences.PrefKeyEncryptionScheme.AES256_SIV,
+            EncryptedSharedPreferences.PrefValueEncryptionScheme.AES256_GCM
+        )
+    } catch (e: Exception) {
+        // Fall back to regular SharedPreferences if encryption fails
+        // (e.g. Keystore changed after OTA update)
+        android.util.Log.w("BusStopStorage", "Encrypted prefs failed, using plaintext fallback", e)
+        context.getSharedPreferences("bushop_encrypted_fallback", Context.MODE_PRIVATE)
+    }
     
     private val busStopsKey = stringPreferencesKey("saved_bus_stops")
 
@@ -113,8 +114,10 @@ class BusStopStorage(private val context: Context) {
         }
     }
 
-    fun saveAutoRefreshInterval(seconds: Int) {
-        encryptedPrefs.edit().putInt("auto_refresh_interval", seconds).apply()
+    suspend fun saveAutoRefreshInterval(seconds: Int) {
+        kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.IO) {
+            encryptedPrefs.edit().putInt("auto_refresh_interval", seconds).apply()
+        }
     }
 
     fun getAutoRefreshInterval(): Int {

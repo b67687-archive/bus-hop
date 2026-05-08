@@ -1,10 +1,22 @@
 package com.bushop.sg.ui.components
 
+import androidx.compose.foundation.clickable
+import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Search
 import androidx.compose.material3.AlertDialog
+import androidx.compose.material3.CircularProgressIndicator
+import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Text
@@ -14,20 +26,24 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
+import com.bushop.sg.data.local.BusStopEntry
 
 @Composable
 fun AddBusStopDialog(
     error: String? = null,
+    isLoading: Boolean = false,
+    searchResults: List<BusStopEntry>,
+    onSearchQueryChanged: (String) -> Unit,
     onDismiss: () -> Unit,
     onConfirm: (code: String, name: String) -> Unit
 ) {
-    var busCode by remember { mutableStateOf("") }
-    var busName by remember { mutableStateOf("") }
-    var localError by remember { mutableStateOf<String?>(null) }
-
-    val displayError = localError ?: error
+    var searchQuery by remember { mutableStateOf("") }
+    var selectedEntry by remember { mutableStateOf<BusStopEntry?>(null) }
+    val displayError = error
 
     AlertDialog(
         onDismissRequest = onDismiss,
@@ -35,25 +51,36 @@ fun AddBusStopDialog(
         text = {
             Column {
                 Text(
-                    text = "Enter the 5-digit bus stop code",
+                    text = if (selectedEntry != null) "Bus stop selected" else "Search by code or name",
                     style = MaterialTheme.typography.bodyMedium,
                     color = MaterialTheme.colorScheme.onSurfaceVariant
                 )
-                Spacer(modifier = Modifier.height(16.dp))
+                Spacer(modifier = Modifier.height(12.dp))
+
                 OutlinedTextField(
-                    value = busCode,
-                    onValueChange = { 
-                        if (it.length <= 5 && it.all { c -> c.isDigit() }) {
-                            busCode = it
-                            localError = null
+                    value = if (selectedEntry != null) "${selectedEntry!!.code} - ${selectedEntry!!.displayName}" else searchQuery,
+                    onValueChange = {
+                        searchQuery = it
+                        selectedEntry = null
+                        if (it.length >= 2) {
+                            onSearchQueryChanged(it)
                         }
                     },
-                    label = { Text("Bus Stop Code") },
-                    placeholder = { Text("e.g. 83139") },
+                    label = { Text("Bus stop code or name") },
+                    placeholder = { Text("e.g. 83139 or Thomson") },
                     modifier = Modifier.fillMaxWidth(),
                     singleLine = true,
-                    isError = displayError != null
+                    isError = displayError != null,
+                    enabled = !isLoading,
+                    leadingIcon = {
+                        Icon(
+                            imageVector = Icons.Default.Search,
+                            contentDescription = null,
+                            modifier = Modifier.size(20.dp)
+                        )
+                    }
                 )
+
                 if (displayError != null) {
                     Spacer(modifier = Modifier.height(4.dp))
                     Text(
@@ -62,28 +89,95 @@ fun AddBusStopDialog(
                         color = MaterialTheme.colorScheme.error
                     )
                 }
-                Spacer(modifier = Modifier.height(12.dp))
-                OutlinedTextField(
-                    value = busName,
-                    onValueChange = { busName = it },
-                    label = { Text("Name (optional)") },
-                    placeholder = { Text("e.g. Near MRT") },
-                    modifier = Modifier.fillMaxWidth(),
-                    singleLine = true
-                )
+
+                // Search results or selected entry info
+                if (selectedEntry != null) {
+                    Spacer(modifier = Modifier.height(8.dp))
+                    Text(
+                        text = "Code: ${selectedEntry!!.code}\n${selectedEntry!!.displayName}",
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                } else if (searchQuery.length >= 2 && searchResults.isNotEmpty()) {
+                    Spacer(modifier = Modifier.height(8.dp))
+                    LazyColumn(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .height((searchResults.size * 52).coerceAtMost(260).dp),
+                        verticalArrangement = Arrangement.spacedBy(2.dp)
+                    ) {
+                        items(searchResults) { entry ->
+                            Row(
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .clickable {
+                                        selectedEntry = entry
+                                        searchQuery = "${entry.code} - ${entry.name}"
+                                    }
+                                    .padding(horizontal = 8.dp, vertical = 8.dp),
+                                verticalAlignment = Alignment.CenterVertically,
+                                horizontalArrangement = Arrangement.SpaceBetween
+                            ) {
+                                Column(modifier = Modifier.weight(1f)) {
+                                    Text(
+                                        text = entry.name,
+                                        style = MaterialTheme.typography.bodyMedium,
+                                        fontWeight = FontWeight.Medium
+                                    )
+                                    Text(
+                                        text = entry.road,
+                                        style = MaterialTheme.typography.labelSmall,
+                                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                                    )
+                                }
+                                Text(
+                                    text = entry.code,
+                                    style = MaterialTheme.typography.labelMedium,
+                                    fontWeight = FontWeight.Bold,
+                                    color = MaterialTheme.colorScheme.primary
+                                )
+                            }
+                        }
+                    }
+                } else if (searchQuery.length >= 2 && searchResults.isEmpty() && !isLoading) {
+                    Spacer(modifier = Modifier.height(8.dp))
+                    Text(
+                        text = "No bus stops found. You can type a 5-digit code and press Add.",
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                }
             }
         },
         confirmButton = {
             TextButton(
                 onClick = {
-                    if (busCode.length != 5) {
-                        localError = "Bus stop code must be 5 digits"
-                    } else {
-                        onConfirm(busCode, busName)
+                    if (selectedEntry != null) {
+                        onConfirm(selectedEntry!!.code, selectedEntry!!.name)
+                    } else if (searchQuery.length == 5 && searchQuery.all { it.isDigit() }) {
+                        // Manual code entry — try to find name from index, use code if not found
+                        onConfirm(searchQuery, "")
+                    } else if (selectedEntry == null) {
+                        // User typed something but it's not a valid code — try searching
+                        onSearchQueryChanged(searchQuery)
                     }
-                }
+                },
+                enabled = !isLoading && (selectedEntry != null || (searchQuery.length == 5 && searchQuery.all { it.isDigit() }))
             ) {
-                Text("Add")
+                if (isLoading) {
+                    Row(
+                        horizontalArrangement = Arrangement.spacedBy(8.dp),
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        CircularProgressIndicator(
+                            modifier = Modifier.size(16.dp),
+                            strokeWidth = 2.dp
+                        )
+                        Text("Checking...")
+                    }
+                } else {
+                    Text("Add")
+                }
             }
         },
         dismissButton = {
