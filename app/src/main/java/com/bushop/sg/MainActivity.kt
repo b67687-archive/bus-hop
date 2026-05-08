@@ -1,8 +1,6 @@
 package com.bushop.sg
 
 import android.os.Bundle
-import androidx.compose.animation.Crossfade
-import androidx.compose.animation.core.tween
 import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
@@ -43,17 +41,12 @@ class MainActivity : ComponentActivity() {
                 2 -> true
                 else -> isSystemInDarkTheme()
             }
-            Crossfade(
-                targetState = isDarkTheme,
-                animationSpec = tween(durationMillis = 400)
-            ) { isDark ->
-                BusHopTheme(darkTheme = isDark) {
-                    Surface(
-                        modifier = Modifier.fillMaxSize(),
-                        color = MaterialTheme.colorScheme.background
-                    ) {
-                        MainScreen(viewModel = viewModel)
-                    }
+            BusHopTheme(darkTheme = isDarkTheme) {
+                Surface(
+                    modifier = Modifier.fillMaxSize(),
+                    color = MaterialTheme.colorScheme.background
+                ) {
+                    MainScreen(viewModel = viewModel)
                 }
             }
         }
