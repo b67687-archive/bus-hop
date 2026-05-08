@@ -141,9 +141,9 @@ class BusStopStorage(private val context: Context) {
 
     // ── Auto-refresh interval ──
 
-    val autoRefreshInterval: Flow<Int> = context.dataStore.data.map { prefs ->
-        prefs[intPreferencesKey("auto_refresh_interval")] ?: 30
-    }
+    val autoRefreshInterval: Flow<Int> = context.dataStore.data
+        .map { prefs -> prefs[intPreferencesKey("auto_refresh_interval")] ?: 30 }
+        .distinctUntilChanged()
 
     suspend fun getAutoRefreshIntervalOnce(): Int {
         return autoRefreshInterval.first()

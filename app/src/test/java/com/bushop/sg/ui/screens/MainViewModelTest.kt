@@ -1,6 +1,6 @@
 package com.bushop.sg.ui.screens
 
-import androidx.lifecycle.viewModelScope
+import io.mockk.coEvery
 import com.bushop.sg.data.local.BusStopEntry
 import com.bushop.sg.data.local.BusStopIndex
 import com.bushop.sg.data.local.DuplicateStopException
@@ -16,12 +16,12 @@ import io.mockk.mockk
 import io.mockk.verify
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
-import kotlinx.coroutines.cancel
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.test.StandardTestDispatcher
 import kotlinx.coroutines.test.advanceUntilIdle
 import kotlinx.coroutines.test.runTest
 import kotlinx.coroutines.test.resetMain
+import kotlinx.coroutines.test.runCurrent
 import kotlinx.coroutines.test.setMain
 import org.junit.After
 import org.junit.Assert.assertEquals
@@ -79,7 +79,6 @@ class MainViewModelTest {
 
     @After
     fun tearDown() {
-        viewModel.viewModelScope.cancel()
         Dispatchers.resetMain()
     }
 
@@ -180,7 +179,7 @@ class MainViewModelTest {
 
         val pinnedStop = viewModel.savedStops.value.find { it.busStop.code == "11111" }
         assertNotNull(pinnedStop)
-        assertFalse(pinnedStop!!.isPinned)
+        assertFalse(pinnedStop?.isPinned ?: true)
     }
 
     @Test
@@ -444,10 +443,10 @@ class MainViewModelTest {
     }
 
     @Test
-    fun `toggleThemeMode persists via repository`() {
+    fun `toggleThemeMode persists via repository`() = runTest(testDispatcher) {
         viewModel.toggleThemeMode()
         // After advancing dispatcher, the save coroutine should have run
-        // (viewModel.toggleThemeMode launches in viewModelScope)
+        runCurrent()
         assertEquals(1, themeModeFlow.value)
     }
 
@@ -465,10 +464,13 @@ class MainViewModelTest {
     @Test
     fun `setAutoRefreshInterval with positive value starts auto-refresh`() = runTest(testDispatcher) {
         viewModel.setAutoRefreshInterval(30)
-        advanceUntilIdle()
+        runCurrent() // process save coroutine, but do NOT advance into the while(true) loop
 
         assertEquals(30, viewModel.autoRefreshIntervalSeconds)
         coVerify { repository.setAutoRefreshInterval(30) }
+
+        // Stop the timer to prevent while(true) loop from leaking via shared test dispatcher
+        viewModel.setAutoRefreshInterval(0)
     }
 
     // ── Empty state ──
