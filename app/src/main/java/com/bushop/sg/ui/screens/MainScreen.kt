@@ -24,6 +24,7 @@ import androidx.compose.material.icons.filled.BrightnessAuto
 import androidx.compose.material.icons.filled.Check
 import androidx.compose.material.icons.filled.DarkMode
 import androidx.compose.material.icons.filled.DirectionsBus
+import androidx.compose.material.icons.filled.Settings
 import androidx.compose.material.icons.filled.LightMode
 import androidx.compose.material.icons.filled.Refresh
 import androidx.compose.material.icons.automirrored.filled.Sort
@@ -75,7 +76,7 @@ private fun formatLastUpdated(timestamp: Long): String {
 fun MainScreen(viewModel: MainViewModel) {
     val savedStops by viewModel.savedStops.collectAsState()
     val sortByEarliest by viewModel.sortByEarliest.collectAsState()
-    var showRefreshMenu by remember { mutableStateOf(false) }
+    var showSettings by remember { mutableStateOf(false) }
     val snackbarHostState = remember { SnackbarHostState() }
     
     var deleteTarget by remember { mutableStateOf<String?>(null) }
@@ -138,42 +139,25 @@ fun MainScreen(viewModel: MainViewModel) {
                             }
                         )
                     }
-                    Box {
-                        IconButton(onClick = { showRefreshMenu = true }) {
-                            Icon(
-                                imageVector = Icons.Default.Refresh,
-                                contentDescription = "Refresh"
-                            )
-                        }
-                        DropdownMenu(
-                            expanded = showRefreshMenu,
-                            onDismissRequest = { showRefreshMenu = false }
-                        ) {
-                            val intervals = listOf(0 to "Off", 30 to "30s", 60 to "1m", 120 to "2m", 300 to "5m")
-                            intervals.forEach { (seconds, label) ->
-                                DropdownMenuItem(
-                                    text = { Text(label) },
-                                    onClick = {
-                                        viewModel.setAutoRefreshInterval(seconds)
-                                        showRefreshMenu = false
-                                    },
-                                    trailingIcon = {
-                                        if (viewModel.autoRefreshIntervalSeconds == seconds) {
-                                            Icon(
-                                                imageVector = Icons.Default.Check,
-                                                contentDescription = null,
-                                                tint = MaterialTheme.colorScheme.primary
-                                            )
-                                        }
-                                    }
-                                )
-                            }
-                        }
+                    IconButton(
+                        onClick = { viewModel.refreshAll() }
+                    ) {
+                        Icon(
+                            imageVector = Icons.Default.Refresh,
+                            contentDescription = "Refresh"
+                        )
+                    }
+                    IconButton(onClick = { showSettings = true }) {
+                        Icon(
+                            imageVector = Icons.Default.Settings,
+                            contentDescription = "Settings"
+                        )
                     }
                 },
                 colors = TopAppBarDefaults.centerAlignedTopAppBarColors(
-                    containerColor = MaterialTheme.colorScheme.background,
-                    titleContentColor = MaterialTheme.colorScheme.onBackground
+                    containerColor = MaterialTheme.colorScheme.background.copy(alpha = 0.85f),
+                    titleContentColor = MaterialTheme.colorScheme.onBackground,
+                    scrolledContainerColor = MaterialTheme.colorScheme.background.copy(alpha = 0.95f)
                 )
             )
         },
@@ -260,6 +244,39 @@ fun MainScreen(viewModel: MainViewModel) {
             }
         }
     }
+    }
+
+    if (showSettings) {
+        AlertDialog(
+            onDismissRequest = { showSettings = false },
+            title = { Text("Auto Refresh") },
+            text = {
+                Column {
+                    val intervals = listOf(0 to "Off", 30 to "30s", 60 to "1m", 120 to "2m", 300 to "5m")
+                    intervals.forEach { (seconds, label) ->
+                        TextButton(
+                            onClick = {
+                                viewModel.setAutoRefreshInterval(seconds)
+                                showSettings = false
+                            },
+                            modifier = Modifier.fillMaxWidth()
+                        ) {
+                            Text(label, modifier = Modifier.weight(1f))
+                            if (viewModel.autoRefreshIntervalSeconds == seconds) {
+                                Icon(
+                                    imageVector = Icons.Default.Check,
+                                    contentDescription = null,
+                                    tint = MaterialTheme.colorScheme.primary
+                                )
+                            }
+                        }
+                    }
+                }
+            },
+            confirmButton = {
+                TextButton(onClick = { showSettings = false }) { Text("Done") }
+            }
+        )
     }
 
     if (viewModel.addStopDialogVisible) {
