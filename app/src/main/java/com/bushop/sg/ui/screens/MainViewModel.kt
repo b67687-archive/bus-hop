@@ -8,12 +8,14 @@ import androidx.lifecycle.ViewModelProvider
 import androidx.lifecycle.viewModelScope
 import com.bushop.sg.data.local.BusStopIndex
 import com.bushop.sg.data.local.DuplicateStopException
-import com.bushop.sg.data.model.BusService
 import com.bushop.sg.data.model.BusStop
+import com.bushop.sg.data.model.BusStopWithArrivals
+import com.bushop.sg.data.model.NetworkResult
 import com.bushop.sg.data.repository.BusRepository
+import com.bushop.sg.data.usecase.AutoRefreshController
+import com.bushop.sg.data.usecase.BusStopUseCase
+import com.bushop.sg.data.usecase.StopRefreshCoordinator
 import kotlinx.coroutines.Job
-import kotlinx.coroutines.async
-import kotlinx.coroutines.awaitAll
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -22,18 +24,18 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asSharedFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.combine
-import kotlinx.coroutines.launch
 import kotlinx.coroutines.CancellationException
-import kotlinx.coroutines.sync.Mutex
-import kotlinx.coroutines.sync.withLock
+import kotlinx.coroutines.launch
 import java.io.IOException
-
-import com.bushop.sg.data.model.BusStopWithArrivals
 
 class MainViewModel(
     private val repository: BusRepository,
-    private val busStopIndex: BusStopIndex
+    private val busStopIndex: BusStopIndex,
+    private val useCase: BusStopUseCase = BusStopUseCase(),
+    private val refreshCoordinator: StopRefreshCoordinator = StopRefreshCoordinator()
 ) : ViewModel() {
+
+    private val autoRefreshController = AutoRefreshController(viewModelScope)
 
     private val _savedStops = MutableStateFlow<List<BusStopWithArrivals>>(emptyList())
     val savedStops: StateFlow<List<BusStopWithArrivals>> = _savedStops.asStateFlow()
@@ -44,18 +46,12 @@ class MainViewModel(
     var addStopError by mutableStateOf<String?>(null)
         private set
 
-    private var autoRefreshJob: Job? = null
     private var saveCollapseJob: Job? = null
     var autoRefreshIntervalSeconds by mutableStateOf(30)
         private set
     
     private val _sortByEarliest = MutableStateFlow(false)
     val sortByEarliest: StateFlow<Boolean> = _sortByEarliest.asStateFlow()
-
-    private val refreshCooldownMs = 30_000L
-    private val lastRefreshTimestamps = mutableMapOf<String, Long>()
-    private val refreshMutexes = mutableMapOf<String, Mutex>()
-    private fun cooldownMutex(code: String): Mutex = refreshMutexes.getOrPut(code) { Mutex() }
 
     private val _snackbarMessage = MutableSharedFlow<String>(extraBufferCapacity = 1)
     val snackbarMessage: SharedFlow<String> = _snackbarMessage.asSharedFlow()
@@ -83,7 +79,7 @@ class MainViewModel(
         viewModelScope.launch {
             autoRefreshIntervalSeconds = repository.getAutoRefreshIntervalOnce()
             if (autoRefreshIntervalSeconds > 0) {
-                startAutoRefresh()
+                autoRefreshController.start(autoRefreshIntervalSeconds) { refreshAll(isAutoRefresh = true) }
             }
         }
 
@@ -91,23 +87,14 @@ class MainViewModel(
             combine(
                 repository.savedBusStops,
                 repository.cachedBusServices,
+                repository.cachedTimestamps,
                 repository.collapsedStopCodes,
                 _sortByEarliest
-            ) { stops, cached, collapsedCodes, sortByEarliest ->
+            ) { stops, cached, timestamps, collapsedCodes, sortByEarliest ->
                 stops.map { stop ->
                     val cachedServices = cached[stop.code] ?: emptyList()
                     val existing = _savedStops.value.find { it.busStop.code == stop.code }
-                    val sortedServices = if (sortByEarliest) {
-                        cachedServices.sortedBy { service ->
-                            when {
-                                service.next == null -> Long.MAX_VALUE
-                                service.next.durationMs < 60000 -> 0L
-                                else -> service.next.durationMs
-                            }
-                        }
-                    } else {
-                        cachedServices
-                    }
+                    val sortedServices = useCase.sortServices(cachedServices, sortByEarliest)
                     BusStopWithArrivals(
                         busStop = stop,
                         services = sortedServices,
@@ -115,6 +102,7 @@ class MainViewModel(
                         error = existing?.error,
                         isOffline = existing?.isOffline ?: false,
                         lastUpdated = existing?.lastUpdated ?: 0L,
+                        cachedAt = timestamps[stop.code] ?: 0L,
                         isCollapsed = existing?.isCollapsed ?: collapsedCodes.contains(stop.code),
                         isPinned = existing?.isPinned ?: false
                     )
@@ -157,25 +145,19 @@ class MainViewModel(
                 addStopError = null
 
                 // Validate stop exists by fetching arrivals first
-                val arrivalResult = try {
-                    repository.getBusArrivals(formattedCode)
-                } catch (e: CancellationException) {
-                    throw e
-                } catch (e: Exception) {
-                    addStopError = "Could not verify bus stop (${e.message ?: "connection error"})."
-                    addStopIsLoading = false
-                    return@launch
-                }
-                if (arrivalResult.isFailure) {
-                    addStopError = "Bus stop not found. Check the code and try again."
-                    addStopIsLoading = false
-                    return@launch
-                }
-                val services = arrivalResult.getOrNull()
-                if (services.isNullOrEmpty()) {
-                    addStopError = "No bus services found at this stop."
-                    addStopIsLoading = false
-                    return@launch
+                when (val arrivalResult = repository.getBusArrivals(formattedCode)) {
+                    is NetworkResult.Error -> {
+                        addStopError = "Could not verify bus stop (${arrivalResult.message})."
+                        addStopIsLoading = false
+                        return@launch
+                    }
+                    is NetworkResult.Success -> {
+                        if (arrivalResult.data.isEmpty()) {
+                            addStopError = "No bus services found at this stop."
+                            addStopIsLoading = false
+                            return@launch
+                        }
+                    }
                 }
 
                 val result = try {
@@ -220,81 +202,68 @@ class MainViewModel(
             }
         }
 
-        val result = try {
-            repository.getBusArrivals(code)
-        } catch (e: CancellationException) {
-            throw e
-        } catch (e: Exception) {
-            // Ensure loading state is cleared even on unexpected exceptions
-            if (!isAutoRefresh) {
-                _savedStops.value = _savedStops.value.toMutableList().apply {
-                    this[index] = this[index].copy(isLoading = false, error = e.message)
+        val result = repository.getBusArrivals(code)
+
+        when (result) {
+            is NetworkResult.Error -> {
+                val isOffline = result.exception is IOException
+                if (!isAutoRefresh) {
+                    _savedStops.value = _savedStops.value.toMutableList().apply {
+                        this[index] = this[index].copy(
+                            isLoading = false,
+                            error = if (isOffline) null else result.message,
+                            isOffline = isOffline
+                        )
+                    }
+                } else {
+                    _savedStops.value = _savedStops.value.toMutableList().apply {
+                        this[index] = this[index].copy(isLoading = false)
+                    }
                 }
             }
-            return
-        }
-
-        val isOffline = result.exceptionOrNull() is IOException
-
-        _savedStops.value = _savedStops.value.toMutableList().apply {
-            this[index] = this[index].copy(
-                services = result.getOrNull() ?: this[index].services,
-                isLoading = false,
-                error = if (isOffline || isAutoRefresh) null else result.exceptionOrNull()?.message,
-                isOffline = isOffline,
-                lastUpdated = if (result.isSuccess) System.currentTimeMillis() else this[index].lastUpdated
-            )
-        }
-        if (result.isSuccess) {
-            lastUpdatedAll = System.currentTimeMillis()
+            is NetworkResult.Success -> {
+                _savedStops.value = _savedStops.value.toMutableList().apply {
+                    this[index] = this[index].copy(
+                        services = result.data,
+                        isLoading = false,
+                        error = null,
+                        isOffline = false,
+                        lastUpdated = System.currentTimeMillis()
+                    )
+                }
+                lastUpdatedAll = System.currentTimeMillis()
+            }
         }
     }
 
     fun refreshArrivals(code: String, isAutoRefresh: Boolean = false) {
         viewModelScope.launch {
-            cooldownMutex(code).withLock {
-                val now = System.currentTimeMillis()
-                val lastRefresh = lastRefreshTimestamps[code] ?: 0L
-                if (!isAutoRefresh && now - lastRefresh < refreshCooldownMs) return@withLock
-                lastRefreshTimestamps[code] = now
+            if (refreshCoordinator.tryRefresh(code, isAutoRefresh)) {
+                refreshArrivalsInternal(code, isAutoRefresh)
             }
-            refreshArrivalsInternal(code, isAutoRefresh)
         }
-    }
-
-    /** Maximum concurrent network requests. */
-    private companion object {
-        private const val MAX_CONCURRENT = 5
     }
 
     fun refreshAll(isAutoRefresh: Boolean = false) {
         if (isAutoRefresh) {
             viewModelScope.launch {
-                _savedStops.value.chunked(MAX_CONCURRENT).forEach { batch ->
-                    batch.map { stop ->
-                        async {
-                            refreshArrivalsInternal(stop.busStop.code, isAutoRefresh)
-                        }
-                    }.awaitAll()
-                }
+                refreshCoordinator.refreshAllConcurrent(
+                    codes = _savedStops.value.map { it.busStop.code },
+                    isAutoRefresh = true,
+                    refreshBlock = { refreshArrivalsInternal(it, true) }
+                )
             }
             return
         }
         // Manual refresh: always show visual feedback, skip only the API call if in cooldown
         isRefreshing = true
-        lastUpdatedAll = System.currentTimeMillis() // pulse the timer
+        lastUpdatedAll = System.currentTimeMillis()
         viewModelScope.launch {
-            _savedStops.value.chunked(MAX_CONCURRENT).forEach { batch ->
-                batch.map { stop ->
-                    async {
-                        val now = System.currentTimeMillis()
-                        val lastRefresh = lastRefreshTimestamps[stop.busStop.code] ?: 0L
-                        if (now - lastRefresh < refreshCooldownMs) return@async
-                        lastRefreshTimestamps[stop.busStop.code] = now
-                        refreshArrivalsInternal(stop.busStop.code, isAutoRefresh)
-                    }
-                }.awaitAll()
-            }
+            refreshCoordinator.refreshAllConcurrent(
+                codes = _savedStops.value.map { it.busStop.code },
+                isAutoRefresh = false,
+                refreshBlock = { refreshArrivalsInternal(it, false) }
+            )
             delay(400)
             isRefreshing = false
         }
@@ -306,9 +275,9 @@ class MainViewModel(
             repository.setAutoRefreshInterval(seconds)
         }
         if (seconds > 0) {
-            startAutoRefresh()
+            autoRefreshController.start(seconds) { refreshAll(isAutoRefresh = true) }
         } else {
-            stopAutoRefresh()
+            autoRefreshController.stop()
         }
     }
 
@@ -330,21 +299,13 @@ class MainViewModel(
     }
 
     fun toggleCollapse(code: String) {
-        val index = _savedStops.value.indexOfFirst { it.busStop.code == code }
-        if (index != -1) {
-            val newCollapsed = !_savedStops.value[index].isCollapsed
-            _savedStops.value = _savedStops.value.toMutableList().apply {
-                this[index] = this[index].copy(isCollapsed = newCollapsed)
-            }
-            // Debounce collapse state persistence (500ms)
-            saveCollapseJob?.cancel()
-            saveCollapseJob = viewModelScope.launch {
-                delay(500)
-                val collapsedCodes = _savedStops.value
-                    .filter { it.isCollapsed }
-                    .map { it.busStop.code }
-                repository.setCollapsedStops(collapsedCodes)
-            }
+        val (updated, collapsedCodes) = useCase.toggleCollapsed(_savedStops.value, code)
+        _savedStops.value = updated
+        // Debounce collapse state persistence (500ms)
+        saveCollapseJob?.cancel()
+        saveCollapseJob = viewModelScope.launch {
+            delay(500)
+            repository.setCollapsedStops(collapsedCodes)
         }
     }
 
@@ -355,43 +316,14 @@ class MainViewModel(
             _savedStops.value = _savedStops.value.toMutableList().apply {
                 this[index] = this[index].copy(isPinned = !this[index].isPinned)
             }.let { list ->
-                val pinned = list.filter { it.isPinned }
-                val unpinned = list.filter { !it.isPinned }
-                if (wasPinned) {
-                    // Unpinning: restore to addition order among unpinned stops
-                    val order = additionOrder.filter { code2 ->
-                        unpinned.any { it.busStop.code == code2 }
-                    }
-                    val sorted = order.mapNotNull { code2 ->
-                        unpinned.find { it.busStop.code == code2 }
-                    }
-                    pinned + sorted
-                } else {
-                    // Pinning: move to top, leave rest in their current order
-                    pinned + unpinned
-                }
+                useCase.applyPinning(list, wasPinned, additionOrder)
             }
         }
-    }
-
-    private fun startAutoRefresh() {
-        stopAutoRefresh()
-        autoRefreshJob = viewModelScope.launch {
-            while (true) {
-                delay(autoRefreshIntervalSeconds * 1000L)
-                refreshAll(isAutoRefresh = true)
-            }
-        }
-    }
-
-    private fun stopAutoRefresh() {
-        autoRefreshJob?.cancel()
-        autoRefreshJob = null
     }
 
     override fun onCleared() {
         super.onCleared()
-        stopAutoRefresh()
+        autoRefreshController.onCleared()
     }
 
     class Factory(
