@@ -20,8 +20,15 @@ class BusRepository(
 
     val themeMode: Flow<Int> = storage.themeMode
 
-    suspend fun getThemeMode(): Int = withContext(Dispatchers.IO) {
-        // Read the DataStore-derived flow once
+    val autoRefreshInterval: Flow<Int> = storage.autoRefreshInterval
+
+    suspend fun getAutoRefreshIntervalOnce(): Int = storage.getAutoRefreshIntervalOnce()
+
+    suspend fun setAutoRefreshInterval(seconds: Int) {
+        storage.saveAutoRefreshInterval(seconds)
+    }
+
+    suspend fun getThemeModeOnce(): Int = withContext(Dispatchers.IO) {
         storage.themeMode.first()
     }
 
@@ -33,18 +40,13 @@ class BusRepository(
         storage.saveCollapsedStops(codes)
     }
 
-    fun getAutoRefreshInterval(): Int = storage.getAutoRefreshInterval()
-
-    suspend fun setAutoRefreshInterval(seconds: Int) {
-        storage.saveAutoRefreshInterval(seconds)
-    }
-
     suspend fun addBusStop(stop: BusStop): Result<Unit> {
         return storage.addBusStop(stop)
     }
 
     suspend fun removeBusStop(code: String) {
         storage.removeBusStop(code)
+        storage.evictBusServices(code)
     }
 
     suspend fun getBusArrivals(busStopCode: String): Result<List<BusService>> {

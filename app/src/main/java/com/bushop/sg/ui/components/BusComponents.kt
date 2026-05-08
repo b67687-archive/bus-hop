@@ -60,26 +60,27 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.input.pointer.pointerInput
 import com.bushop.sg.data.model.BusService
+import com.bushop.sg.data.model.BusStopWithArrivals
 import com.bushop.sg.data.model.toDisplayArrival
 
 @OptIn(ExperimentalLayoutApi::class)
 @Composable
 fun BusStopCard(
-    busStopCode: String,
-    busStopName: String,
-    services: List<BusService>,
-    isLoading: Boolean,
-    error: String?,
-    isOffline: Boolean,
-    lastUpdated: Long,
-    isCollapsed: Boolean,
-    isPinned: Boolean = false,
+    stop: BusStopWithArrivals,
     onRefresh: () -> Unit,
     onToggleCollapse: () -> Unit,
     onTogglePin: () -> Unit,
     onDelete: () -> Unit,
     modifier: Modifier = Modifier
 ) {
+    val busStopCode = stop.busStop.code
+    val busStopName = stop.busStop.name
+    val services = stop.services
+    val isLoading = stop.isLoading
+    val error = stop.error
+    val isOffline = stop.isOffline
+    val isCollapsed = stop.isCollapsed
+    val isPinned = stop.isPinned
     Card(
         modifier = modifier.fillMaxWidth(),
         shape = RoundedCornerShape(20.dp),

@@ -21,7 +21,7 @@ android {
 
     buildTypes {
         release {
-            isMinifyEnabled = false
+            isMinifyEnabled = true
             proguardFiles(
                 getDefaultProguardFile("proguard-android-optimize.txt"),
                 "proguard-rules.pro"
@@ -58,7 +58,9 @@ tasks.matching { it.name == "assembleDebug" }.configureEach {
         val apk = layout.buildDirectory.file("outputs/apk/debug/app-debug.apk").get().asFile
         if (apk.exists()) {
             val renamed = File(apk.parentFile, "app-debug-bus-hop.apk")
-            apk.renameTo(renamed)
+            if (!apk.renameTo(renamed)) {
+                throw GradleException("Failed to rename APK to $renamed")
+            }
             logger.lifecycle("APK renamed to app-debug-bus-hop.apk")
         }
     }
@@ -89,7 +91,7 @@ dependencies {
     implementation("org.jetbrains.kotlinx:kotlinx-coroutines-android:1.8.0")
 
     implementation("androidx.datastore:datastore-preferences:1.0.0")
-    implementation("androidx.security:security-crypto:1.1.0-alpha06")
+
 
     debugImplementation("androidx.compose.ui:ui-tooling")
     debugImplementation("androidx.compose.ui:ui-test-manifest")

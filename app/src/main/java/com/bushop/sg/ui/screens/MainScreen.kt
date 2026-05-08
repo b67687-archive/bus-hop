@@ -87,6 +87,11 @@ fun MainScreen(viewModel: MainViewModel) {
         }
     }
 
+    val onSortClick = remember { { viewModel.toggleSortOrder() } }
+    val onThemeClick = remember { { viewModel.toggleThemeMode() } }
+    val onRefreshClick = remember { { viewModel.refreshAll() } }
+    val onSettingsClick = remember { { showSettings = true } }
+
     Scaffold(
         modifier = Modifier.nestedScroll(scrollBehavior.nestedScrollConnection),
         snackbarHost = { SnackbarHost(snackbarHostState) },
@@ -112,14 +117,14 @@ fun MainScreen(viewModel: MainViewModel) {
                     }
                 },
                 actions = {
-                    IconButton(onClick = { viewModel.toggleSortOrder() }) {
+                    IconButton(onClick = onSortClick) {
                         Icon(
                             imageVector = if (sortByEarliest) Icons.AutoMirrored.Filled.Sort else Icons.AutoMirrored.Outlined.Sort,
                             contentDescription = "Sort",
                             tint = if (sortByEarliest) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant
                         )
                     }
-                    IconButton(onClick = { viewModel.toggleThemeMode() }) {
+                    IconButton(onClick = onThemeClick) {
                         Icon(
                             imageVector = when (viewModel.themeMode) {
                                 0 -> Icons.Default.BrightnessAuto
@@ -141,16 +146,14 @@ fun MainScreen(viewModel: MainViewModel) {
                             }
                         )
                     }
-                    IconButton(
-                        onClick = { viewModel.refreshAll() }
-                    ) {
+                    IconButton(onClick = onRefreshClick) {
                         Icon(
                             imageVector = Icons.Default.Refresh,
                             contentDescription = "Refresh",
                             tint = if (viewModel.isRefreshing) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant
                         )
                     }
-                    IconButton(onClick = { showSettings = true }) {
+                    IconButton(onClick = onSettingsClick) {
                         Icon(
                             imageVector = Icons.Default.Settings,
                             contentDescription = "Settings"
@@ -203,15 +206,7 @@ fun MainScreen(viewModel: MainViewModel) {
                         key = { it.busStop.code }
                     ) { stopWithArrivals ->
                     BusStopCard(
-                        busStopCode = stopWithArrivals.busStop.code,
-                        busStopName = stopWithArrivals.busStop.name,
-                        services = stopWithArrivals.services,
-                        isLoading = stopWithArrivals.isLoading,
-                        error = stopWithArrivals.error,
-                        isOffline = stopWithArrivals.isOffline,
-                        lastUpdated = stopWithArrivals.lastUpdated,
-                        isCollapsed = stopWithArrivals.isCollapsed,
-                        isPinned = stopWithArrivals.isPinned,
+                        stop = stopWithArrivals,
                         onRefresh = { viewModel.refreshArrivals(stopWithArrivals.busStop.code) },
                         onToggleCollapse = { viewModel.toggleCollapse(stopWithArrivals.busStop.code) },
                         onTogglePin = { viewModel.togglePin(stopWithArrivals.busStop.code) },

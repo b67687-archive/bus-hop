@@ -24,18 +24,11 @@ import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.CancellationException
+import kotlinx.coroutines.sync.Mutex
+import kotlinx.coroutines.sync.withLock
 import java.io.IOException
 
-data class BusStopWithArrivals(
-    val busStop: BusStop,
-    val services: List<BusService> = emptyList(),
-    val isLoading: Boolean = false,
-    val error: String? = null,
-    val isOffline: Boolean = false,
-    val lastUpdated: Long = 0L,
-    val isCollapsed: Boolean = false,
-    val isPinned: Boolean = false
-)
+import com.bushop.sg.data.model.BusStopWithArrivals
 
 class MainViewModel(
     private val repository: BusRepository,
@@ -58,8 +51,10 @@ class MainViewModel(
     private val _sortByEarliest = MutableStateFlow(false)
     val sortByEarliest: StateFlow<Boolean> = _sortByEarliest.asStateFlow()
 
-    private val lastRefreshTimestamps = mutableMapOf<String, Long>()
     private val refreshCooldownMs = 30_000L
+    private val lastRefreshTimestamps = mutableMapOf<String, Long>()
+    private val refreshMutexes = mutableMapOf<String, Mutex>()
+    private fun cooldownMutex(code: String): Mutex = refreshMutexes.getOrPut(code) { Mutex() }
 
     private val _snackbarMessage = MutableSharedFlow<String>(extraBufferCapacity = 1)
     val snackbarMessage: SharedFlow<String> = _snackbarMessage.asSharedFlow()
@@ -82,10 +77,10 @@ class MainViewModel(
     init {
         // Restore persisted preferences
         viewModelScope.launch {
-            themeMode = repository.getThemeMode()
+            themeMode = repository.getThemeModeOnce()
         }
         viewModelScope.launch {
-            autoRefreshIntervalSeconds = repository.getAutoRefreshInterval()
+            autoRefreshIntervalSeconds = repository.getAutoRefreshIntervalOnce()
             if (autoRefreshIntervalSeconds > 0) {
                 startAutoRefresh()
             }
@@ -255,24 +250,32 @@ class MainViewModel(
     }
 
     fun refreshArrivals(code: String, isAutoRefresh: Boolean = false) {
-        val now = System.currentTimeMillis()
-        val lastRefresh = lastRefreshTimestamps[code] ?: 0L
-        if (!isAutoRefresh && now - lastRefresh < refreshCooldownMs) return
-        lastRefreshTimestamps[code] = now
-
         viewModelScope.launch {
+            cooldownMutex(code).withLock {
+                val now = System.currentTimeMillis()
+                val lastRefresh = lastRefreshTimestamps[code] ?: 0L
+                if (!isAutoRefresh && now - lastRefresh < refreshCooldownMs) return@withLock
+                lastRefreshTimestamps[code] = now
+            }
             refreshArrivalsInternal(code, isAutoRefresh)
         }
+    }
+
+    /** Maximum concurrent network requests. */
+    private companion object {
+        private const val MAX_CONCURRENT = 5
     }
 
     fun refreshAll(isAutoRefresh: Boolean = false) {
         if (isAutoRefresh) {
             viewModelScope.launch {
-                _savedStops.value.map { stop ->
-                    async {
-                        refreshArrivalsInternal(stop.busStop.code, isAutoRefresh)
-                    }
-                }.awaitAll()
+                _savedStops.value.chunked(MAX_CONCURRENT).forEach { batch ->
+                    batch.map { stop ->
+                        async {
+                            refreshArrivalsInternal(stop.busStop.code, isAutoRefresh)
+                        }
+                    }.awaitAll()
+                }
             }
             return
         }
@@ -280,15 +283,17 @@ class MainViewModel(
         isRefreshing = true
         lastUpdatedAll = System.currentTimeMillis() // pulse the timer
         viewModelScope.launch {
-            _savedStops.value.map { stop ->
-                async {
-                    val now = System.currentTimeMillis()
-                    val lastRefresh = lastRefreshTimestamps[stop.busStop.code] ?: 0L
-                    if (now - lastRefresh < refreshCooldownMs) return@async
-                    lastRefreshTimestamps[stop.busStop.code] = now
-                    refreshArrivalsInternal(stop.busStop.code, isAutoRefresh)
-                }
-            }.awaitAll()
+            _savedStops.value.chunked(MAX_CONCURRENT).forEach { batch ->
+                batch.map { stop ->
+                    async {
+                        val now = System.currentTimeMillis()
+                        val lastRefresh = lastRefreshTimestamps[stop.busStop.code] ?: 0L
+                        if (now - lastRefresh < refreshCooldownMs) return@async
+                        lastRefreshTimestamps[stop.busStop.code] = now
+                        refreshArrivalsInternal(stop.busStop.code, isAutoRefresh)
+                    }
+                }.awaitAll()
+            }
             delay(400)
             isRefreshing = false
         }

@@ -11,6 +11,7 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.ui.Modifier
+import androidx.lifecycle.lifecycleScope
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.bushop.sg.data.local.BusStopIndex
 import com.bushop.sg.data.local.BusStopStorage
@@ -18,7 +19,6 @@ import com.bushop.sg.data.repository.BusRepository
 import com.bushop.sg.ui.screens.MainScreen
 import com.bushop.sg.ui.screens.MainViewModel
 import com.bushop.sg.ui.theme.BusHopTheme
-import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 
@@ -30,8 +30,8 @@ class MainActivity : ComponentActivity() {
         val storage = BusStopStorage(applicationContext)
         val repository = BusRepository(storage)
         val busStopIndex = BusStopIndex(applicationContext).also { idx ->
-            // Kick off background load — the ViewModel awaits completion
-            CoroutineScope(Dispatchers.IO).launch { idx.load() }
+            // Kick off background load — scoped to Activity lifecycle
+            lifecycleScope.launch(Dispatchers.IO) { idx.load() }
         }
         val viewModelFactory = MainViewModel.Factory(repository, busStopIndex)
 

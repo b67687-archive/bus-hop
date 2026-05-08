@@ -1,46 +1,27 @@
 package com.bushop.sg.data.local
 
 import android.content.Context
-import android.content.SharedPreferences
 import androidx.datastore.core.DataStore
 import androidx.datastore.preferences.core.Preferences
 import androidx.datastore.preferences.core.edit
 import androidx.datastore.preferences.core.intPreferencesKey
 import androidx.datastore.preferences.core.stringPreferencesKey
 import androidx.datastore.preferences.preferencesDataStore
-import androidx.security.crypto.EncryptedSharedPreferences
-import androidx.security.crypto.MasterKey
 import com.bushop.sg.data.model.BusService
 import com.bushop.sg.data.model.BusStop
 import com.google.gson.Gson
 import com.google.gson.reflect.TypeToken
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.map
+import kotlinx.coroutines.withContext
 
 private val Context.dataStore: DataStore<Preferences> by preferencesDataStore(name = "bushop_prefs")
 
 class BusStopStorage(private val context: Context) {
 
     private val gson = Gson()
-    private val masterKey = MasterKey.Builder(context)
-        .setKeyScheme(MasterKey.KeyScheme.AES256_GCM)
-        .build()
-    
-    private val encryptedPrefs: SharedPreferences = try {
-        EncryptedSharedPreferences.create(
-            context,
-            "bushop_encrypted",
-            masterKey,
-            EncryptedSharedPreferences.PrefKeyEncryptionScheme.AES256_SIV,
-            EncryptedSharedPreferences.PrefValueEncryptionScheme.AES256_GCM
-        )
-    } catch (e: Exception) {
-        // Fall back to regular SharedPreferences if encryption fails
-        // (e.g. Keystore changed after OTA update)
-        android.util.Log.w("BusStopStorage", "Encrypted prefs failed, using plaintext fallback", e)
-        context.getSharedPreferences("bushop_encrypted_fallback", Context.MODE_PRIVATE)
-    }
-    
     private val busStopsKey = stringPreferencesKey("saved_bus_stops")
 
     val savedBusStops: Flow<List<BusStop>> = context.dataStore.data.map { prefs ->
@@ -90,11 +71,17 @@ class BusStopStorage(private val context: Context) {
     }
 
     fun getBusServicesFlow(): Flow<Map<String, List<BusService>>> {
+        val ttlMs = 24 * 60 * 60 * 1000L // 24 hours
         return context.dataStore.data.map { prefs ->
+            val now = System.currentTimeMillis()
             val result = mutableMapOf<String, List<BusService>>()
             prefs.asMap().forEach { (key, value) ->
-                if (key.name.startsWith("services_")) {
+                if (key.name.startsWith("services_") && !key.name.endsWith("_ts")) {
                     val code = key.name.removePrefix("services_")
+                    val tsKey = stringPreferencesKey("services_${code}_ts")
+                    val ts = prefs[tsKey]?.toLongOrNull() ?: 0L
+                    // Skip stale entries older than TTL
+                    if (now - ts > ttlMs) return@forEach
                     try {
                         val type = object : TypeToken<List<BusService>>() {}.type
                         val services: List<BusService> = gson.fromJson(value as String, type) ?: emptyList()
@@ -109,20 +96,40 @@ class BusStopStorage(private val context: Context) {
     }
 
     suspend fun saveBusServices(code: String, services: List<BusService>) {
-        val key = stringPreferencesKey("services_$code")
+        val servicesKey = stringPreferencesKey("services_$code")
+        val timestampKey = stringPreferencesKey("services_${code}_ts")
+        val now = System.currentTimeMillis()
         context.dataStore.edit { prefs ->
-            prefs[key] = gson.toJson(services)
+            prefs[servicesKey] = gson.toJson(services)
+            prefs[timestampKey] = now.toString()
         }
+    }
+
+    /** Remove cached services for stops that are no longer saved.
+     *  Called after [removeBusStop]. */
+    suspend fun evictBusServices(code: String) {
+        val servicesKey = stringPreferencesKey("services_$code")
+        val timestampKey = stringPreferencesKey("services_${code}_ts")
+        context.dataStore.edit { prefs ->
+            prefs.remove(servicesKey)
+            prefs.remove(timestampKey)
+        }
+    }
+
+    // ── Auto-refresh interval ──
+
+    val autoRefreshInterval: Flow<Int> = context.dataStore.data.map { prefs ->
+        prefs[intPreferencesKey("auto_refresh_interval")] ?: 30
+    }
+
+    suspend fun getAutoRefreshIntervalOnce(): Int {
+        return autoRefreshInterval.first()
     }
 
     suspend fun saveAutoRefreshInterval(seconds: Int) {
-        kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.IO) {
-            encryptedPrefs.edit().putInt("auto_refresh_interval", seconds).apply()
+        context.dataStore.edit { prefs ->
+            prefs[intPreferencesKey("auto_refresh_interval")] = seconds
         }
-    }
-
-    fun getAutoRefreshInterval(): Int {
-        return encryptedPrefs.getInt("auto_refresh_interval", 30)
     }
 
     // ── Theme mode ──
