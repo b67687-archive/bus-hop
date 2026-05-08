@@ -64,6 +64,9 @@ class MainViewModel(
     var addStopIsLoading by mutableStateOf(false)
         private set
 
+    var isRefreshing by mutableStateOf(false)
+        private set
+
     var lastUpdatedAll by mutableStateOf(0L)
         private set
 
@@ -251,14 +254,27 @@ class MainViewModel(
     }
 
     fun refreshAll(isAutoRefresh: Boolean = false) {
+        if (isAutoRefresh) {
+            viewModelScope.launch {
+                _savedStops.value.forEach { stop ->
+                    refreshArrivalsInternal(stop.busStop.code, isAutoRefresh)
+                }
+            }
+            return
+        }
+        // Manual refresh: always show visual feedback, skip only the API call if in cooldown
+        isRefreshing = true
+        lastUpdatedAll = System.currentTimeMillis() // pulse the timer
         viewModelScope.launch {
             _savedStops.value.forEach { stop ->
                 val now = System.currentTimeMillis()
                 val lastRefresh = lastRefreshTimestamps[stop.busStop.code] ?: 0L
-                if (!isAutoRefresh && now - lastRefresh < refreshCooldownMs) return@forEach
+                if (now - lastRefresh < refreshCooldownMs) return@forEach
                 lastRefreshTimestamps[stop.busStop.code] = now
                 refreshArrivalsInternal(stop.busStop.code, isAutoRefresh)
             }
+            delay(400)
+            isRefreshing = false
         }
     }
 
