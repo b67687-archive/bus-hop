@@ -67,7 +67,7 @@ fun AddBusStopDialog(
                 Spacer(modifier = Modifier.height(12.dp))
 
                 OutlinedTextField(
-                    value = if (selectedEntry != null) "${selectedEntry!!.code} - ${selectedEntry!!.displayName}" else searchQuery,
+                    value = selectedEntry?.let { "${it.code} - ${it.displayName}" } ?: searchQuery,
                     onValueChange = {
                         searchQuery = it
                         selectedEntry = null
@@ -100,7 +100,7 @@ fun AddBusStopDialog(
                 if (selectedEntry != null) {
                     Spacer(modifier = Modifier.height(8.dp))
                     Text(
-                        text = "Code: ${selectedEntry!!.code}\n${selectedEntry!!.displayName}",
+                        text = selectedEntry?.let { "Code: ${it.code}\n${it.displayName}" } ?: "",
                         style = MaterialTheme.typography.bodySmall,
                         color = MaterialTheme.colorScheme.onSurfaceVariant
                     )
@@ -158,12 +158,13 @@ fun AddBusStopDialog(
         confirmButton = {
             TextButton(
                 onClick = {
-                    if (selectedEntry != null) {
-                        onConfirm(selectedEntry!!.code, selectedEntry!!.name)
+                    val entry = selectedEntry
+                    if (entry != null) {
+                        onConfirm(entry.code, entry.name)
                     } else if (searchQuery.length == 5 && searchQuery.all { it.isDigit() }) {
                         // Manual code entry — try to find name from index, use code if not found
                         onConfirm(searchQuery, "")
-                    } else if (selectedEntry == null) {
+                    } else {
                         // User typed something but it's not a valid code — try searching
                         onSearchQueryChanged(searchQuery)
                     }
