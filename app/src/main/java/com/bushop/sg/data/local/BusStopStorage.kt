@@ -5,6 +5,7 @@ import android.content.SharedPreferences
 import androidx.datastore.core.DataStore
 import androidx.datastore.preferences.core.Preferences
 import androidx.datastore.preferences.core.edit
+import androidx.datastore.preferences.core.intPreferencesKey
 import androidx.datastore.preferences.core.stringPreferencesKey
 import androidx.datastore.preferences.preferencesDataStore
 import androidx.security.crypto.EncryptedSharedPreferences
@@ -122,6 +123,35 @@ class BusStopStorage(private val context: Context) {
 
     fun getAutoRefreshInterval(): Int {
         return encryptedPrefs.getInt("auto_refresh_interval", 30)
+    }
+
+    // ── Theme mode ──
+
+    val themeMode: Flow<Int> = context.dataStore.data.map { prefs ->
+        prefs[intPreferencesKey("theme_mode")] ?: 0
+    }
+
+    suspend fun saveThemeMode(mode: Int) {
+        context.dataStore.edit { prefs ->
+            prefs[intPreferencesKey("theme_mode")] = mode
+        }
+    }
+
+    // ── Collapsed stops ──
+
+    val collapsedStopCodes: Flow<List<String>> = context.dataStore.data.map { prefs ->
+        val json = prefs[stringPreferencesKey("collapsed_stops")] ?: "[]"
+        try {
+            gson.fromJson(json, object : TypeToken<List<String>>() {}.type) ?: emptyList()
+        } catch (e: Exception) {
+            emptyList()
+        }
+    }
+
+    suspend fun saveCollapsedStops(codes: List<String>) {
+        context.dataStore.edit { prefs ->
+            prefs[stringPreferencesKey("collapsed_stops")] = gson.toJson(codes)
+        }
     }
 }
 

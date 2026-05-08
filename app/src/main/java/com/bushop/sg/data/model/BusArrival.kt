@@ -3,7 +3,7 @@ package com.bushop.sg.data.model
 import com.google.gson.annotations.SerializedName
 
 data class BusArrivalResponse(
-    @SerializedName("services") val services: List<BusService>
+    @SerializedName("services") val services: List<BusService>?
 )
 
 data class BusService(

@@ -60,12 +60,14 @@ import com.bushop.sg.data.local.BusStopEntry
 import com.bushop.sg.ui.components.AddBusStopDialog
 import com.bushop.sg.ui.components.BusStopCard
 
+private val timeFormatter = java.time.format.DateTimeFormatter.ofPattern("HH:mm")
+
 private fun formatLastUpdated(timestamp: Long): String {
     val zdt = java.time.ZonedDateTime.ofInstant(
         java.time.Instant.ofEpochMilli(timestamp),
         java.time.ZoneId.systemDefault()
     )
-    return java.time.format.DateTimeFormatter.ofPattern("HH:mm").format(zdt)
+    return timeFormatter.format(zdt)
 }
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -311,10 +313,11 @@ fun MainScreen(viewModel: MainViewModel) {
                 }) 
             },
             confirmButton = {
+                val target = deleteTarget ?: return@AlertDialog
                 if (isPinned) {
                     TextButton(
                         onClick = {
-                            viewModel.togglePin(deleteTarget!!)
+                            viewModel.togglePin(target)
                             deleteTarget = null
                         }
                     ) {
@@ -323,7 +326,7 @@ fun MainScreen(viewModel: MainViewModel) {
                 } else {
                     TextButton(
                         onClick = {
-                            viewModel.removeBusStop(deleteTarget!!)
+                            viewModel.removeBusStop(target)
                             deleteTarget = null
                         }
                     ) {
