@@ -346,6 +346,7 @@ fun BusServiceRow(service: BusService) {
                 }
             }
 
+            Spacer(modifier = Modifier.height(4.dp))
             service.next?.let { next ->
                 val arrival = next.toDisplayArrival()
                 Text(
@@ -353,7 +354,6 @@ fun BusServiceRow(service: BusService) {
                     style = MaterialTheme.typography.bodySmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant
                 )
-                Spacer(modifier = Modifier.height(4.dp))
                 Text(
                     text = arrival.load,
                     style = MaterialTheme.typography.bodySmall,
@@ -392,6 +392,7 @@ fun BusServiceRow(service: BusService) {
                         textAlign = TextAlign.End
                     )
                 }
+                Spacer(modifier = Modifier.height(4.dp))
             }
             service.subsequent?.let { subsequent ->
                 val arrival2 = subsequent.toDisplayArrival()
