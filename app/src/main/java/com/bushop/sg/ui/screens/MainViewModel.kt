@@ -12,6 +12,8 @@ import com.bushop.sg.data.model.BusService
 import com.bushop.sg.data.model.BusStop
 import com.bushop.sg.data.repository.BusRepository
 import kotlinx.coroutines.Job
+import kotlinx.coroutines.async
+import kotlinx.coroutines.awaitAll
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -21,7 +23,8 @@ import kotlinx.coroutines.flow.asSharedFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.launch
-import java.net.UnknownHostException
+import kotlinx.coroutines.CancellationException
+import java.io.IOException
 
 data class BusStopWithArrivals(
     val busStop: BusStop,
@@ -77,12 +80,24 @@ class MainViewModel(
     private var additionOrder: List<String> = emptyList()
 
     init {
+        // Restore persisted preferences
+        viewModelScope.launch {
+            themeMode = repository.getThemeMode()
+        }
+        viewModelScope.launch {
+            autoRefreshIntervalSeconds = repository.getAutoRefreshInterval()
+            if (autoRefreshIntervalSeconds > 0) {
+                startAutoRefresh()
+            }
+        }
+
         viewModelScope.launch {
             combine(
                 repository.savedBusStops,
                 repository.cachedBusServices,
+                repository.collapsedStopCodes,
                 _sortByEarliest
-            ) { stops, cached, sortByEarliest ->
+            ) { stops, cached, collapsedCodes, sortByEarliest ->
                 stops.map { stop ->
                     val cachedServices = cached[stop.code] ?: emptyList()
                     val existing = _savedStops.value.find { it.busStop.code == stop.code }
@@ -104,7 +119,7 @@ class MainViewModel(
                         error = existing?.error,
                         isOffline = existing?.isOffline ?: false,
                         lastUpdated = existing?.lastUpdated ?: 0L,
-                        isCollapsed = existing?.isCollapsed ?: false,
+                        isCollapsed = existing?.isCollapsed ?: collapsedCodes.contains(stop.code),
                         isPinned = existing?.isPinned ?: false
                     )
                 }
@@ -118,14 +133,6 @@ class MainViewModel(
                 }
             }
         }
-        
-        viewModelScope.launch {
-            autoRefreshIntervalSeconds = repository.getAutoRefreshInterval()
-            if (autoRefreshIntervalSeconds > 0) {
-                startAutoRefresh()
-            }
-        }
-
     }
 
     fun showAddStopDialog() {
@@ -156,8 +163,10 @@ class MainViewModel(
                 // Validate stop exists by fetching arrivals first
                 val arrivalResult = try {
                     repository.getBusArrivals(formattedCode)
+                } catch (e: CancellationException) {
+                    throw e
                 } catch (e: Exception) {
-                    addStopError = "Could not verify bus stop. Check your connection."
+                    addStopError = "Could not verify bus stop (${e.message ?: "connection error"})."
                     addStopIsLoading = false
                     return@launch
                 }
@@ -175,8 +184,10 @@ class MainViewModel(
 
                 val result = try {
                     repository.addBusStop(BusStop(code = formattedCode, name = name))
+                } catch (e: CancellationException) {
+                    throw e
                 } catch (e: Exception) {
-                    addStopError = "Failed to save bus stop."
+                    addStopError = "Failed to save bus stop (${e.message ?: "unknown error"})."
                     addStopIsLoading = false
                     return@launch
                 }
@@ -215,6 +226,8 @@ class MainViewModel(
 
         val result = try {
             repository.getBusArrivals(code)
+        } catch (e: CancellationException) {
+            throw e
         } catch (e: Exception) {
             // Ensure loading state is cleared even on unexpected exceptions
             if (!isAutoRefresh) {
@@ -225,8 +238,7 @@ class MainViewModel(
             return
         }
 
-        val isOffline = result.exceptionOrNull() is UnknownHostException ||
-                result.exceptionOrNull()?.cause is UnknownHostException
+        val isOffline = result.exceptionOrNull() is IOException
 
         _savedStops.value = _savedStops.value.toMutableList().apply {
             this[index] = this[index].copy(
@@ -256,9 +268,11 @@ class MainViewModel(
     fun refreshAll(isAutoRefresh: Boolean = false) {
         if (isAutoRefresh) {
             viewModelScope.launch {
-                _savedStops.value.forEach { stop ->
-                    refreshArrivalsInternal(stop.busStop.code, isAutoRefresh)
-                }
+                _savedStops.value.map { stop ->
+                    async {
+                        refreshArrivalsInternal(stop.busStop.code, isAutoRefresh)
+                    }
+                }.awaitAll()
             }
             return
         }
@@ -266,13 +280,15 @@ class MainViewModel(
         isRefreshing = true
         lastUpdatedAll = System.currentTimeMillis() // pulse the timer
         viewModelScope.launch {
-            _savedStops.value.forEach { stop ->
-                val now = System.currentTimeMillis()
-                val lastRefresh = lastRefreshTimestamps[stop.busStop.code] ?: 0L
-                if (now - lastRefresh < refreshCooldownMs) return@forEach
-                lastRefreshTimestamps[stop.busStop.code] = now
-                refreshArrivalsInternal(stop.busStop.code, isAutoRefresh)
-            }
+            _savedStops.value.map { stop ->
+                async {
+                    val now = System.currentTimeMillis()
+                    val lastRefresh = lastRefreshTimestamps[stop.busStop.code] ?: 0L
+                    if (now - lastRefresh < refreshCooldownMs) return@async
+                    lastRefreshTimestamps[stop.busStop.code] = now
+                    refreshArrivalsInternal(stop.busStop.code, isAutoRefresh)
+                }
+            }.awaitAll()
             delay(400)
             isRefreshing = false
         }
@@ -292,6 +308,9 @@ class MainViewModel(
 
     fun toggleThemeMode() {
         themeMode = (themeMode + 1) % 3
+        viewModelScope.launch {
+            repository.setThemeMode(themeMode)
+        }
     }
 
     val themeIcon: String get() = when (themeMode) {
@@ -307,8 +326,16 @@ class MainViewModel(
     fun toggleCollapse(code: String) {
         val index = _savedStops.value.indexOfFirst { it.busStop.code == code }
         if (index != -1) {
+            val newCollapsed = !_savedStops.value[index].isCollapsed
             _savedStops.value = _savedStops.value.toMutableList().apply {
-                this[index] = this[index].copy(isCollapsed = !this[index].isCollapsed)
+                this[index] = this[index].copy(isCollapsed = newCollapsed)
+            }
+            // Persist collapse state
+            viewModelScope.launch {
+                val collapsedCodes = _savedStops.value
+                    .filter { it.isCollapsed }
+                    .map { it.busStop.code }
+                repository.setCollapsedStops(collapsedCodes)
             }
         }
     }

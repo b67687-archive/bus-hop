@@ -18,6 +18,9 @@ import com.bushop.sg.data.repository.BusRepository
 import com.bushop.sg.ui.screens.MainScreen
 import com.bushop.sg.ui.screens.MainViewModel
 import com.bushop.sg.ui.theme.BusHopTheme
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.launch
 
 class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -26,7 +29,10 @@ class MainActivity : ComponentActivity() {
 
         val storage = BusStopStorage(applicationContext)
         val repository = BusRepository(storage)
-        val busStopIndex = BusStopIndex(applicationContext)
+        val busStopIndex = BusStopIndex(applicationContext).also { idx ->
+            // Kick off background load — the ViewModel awaits completion
+            CoroutineScope(Dispatchers.IO).launch { idx.load() }
+        }
         val viewModelFactory = MainViewModel.Factory(repository, busStopIndex)
 
         setContent {
