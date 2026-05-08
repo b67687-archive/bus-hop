@@ -112,7 +112,7 @@ class MainViewModel(
                 lastUpdatedAll = list.maxOfOrNull { it.lastUpdated } ?: lastUpdatedAll
                 val pinnedFirst = list.sortedByDescending { it.isPinned }
                 _savedStops.value = pinnedFirst
-                if (pinnedFirst.isNotEmpty() && pinnedFirst.none { it.services.isNotEmpty() }) {
+                if (pinnedFirst.isNotEmpty() && pinnedFirst.any { it.services.isEmpty() || it.isStale }) {
                     refreshAll(isAutoRefresh = true)
                 }
             }
