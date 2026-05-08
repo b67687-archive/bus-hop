@@ -1,6 +1,6 @@
 plugins {
-    alias(libs.plugins.android.application)
-    alias(libs.plugins.kotlin.android)
+    id("com.android.application")
+    id("org.jetbrains.kotlin.android")
 }
 
 android {
@@ -11,8 +11,8 @@ android {
         applicationId = "com.bushop.sg"
         minSdk = 24
         targetSdk = 34
-        versionCode = 6
-        versionName = "0.5.0"
+        versionCode = 2
+        versionName = "v0.1.0"
 
         vectorDrawables {
             useSupportLibrary = true
@@ -21,7 +21,7 @@ android {
 
     buildTypes {
         release {
-            isMinifyEnabled = true
+            isMinifyEnabled = false
             proguardFiles(
                 getDefaultProguardFile("proguard-android-optimize.txt"),
                 "proguard-rules.pro"
@@ -58,44 +58,45 @@ tasks.matching { it.name == "assembleDebug" }.configureEach {
         val apk = layout.buildDirectory.file("outputs/apk/debug/app-debug.apk").get().asFile
         if (apk.exists()) {
             val renamed = File(apk.parentFile, "app-debug-bus-hop.apk")
-            if (!apk.renameTo(renamed)) {
-                throw GradleException("Failed to rename APK to $renamed")
-            }
+            apk.renameTo(renamed)
             logger.lifecycle("APK renamed to app-debug-bus-hop.apk")
         }
     }
 }
 
 dependencies {
-    val composeBom = platform(libs.compose.bom)
+    val composeBom = platform("androidx.compose:compose-bom:2024.02.00")
     implementation(composeBom)
 
-    implementation(libs.core.ktx)
-    implementation(libs.lifecycle.runtime.ktx)
-    implementation(libs.activity.compose)
+    implementation("androidx.core:core-ktx:1.12.0")
+    implementation("androidx.lifecycle:lifecycle-runtime-ktx:2.7.0")
+    implementation("androidx.activity:activity-compose:1.8.2")
 
-    implementation(libs.compose.ui)
-    implementation(libs.compose.ui.graphics)
-    implementation(libs.compose.ui.tooling.preview)
-    implementation(libs.compose.material3)
-    implementation(libs.compose.material.icons.extended)
+    implementation("androidx.compose.ui:ui")
+    implementation("androidx.compose.ui:ui-graphics")
+    implementation("androidx.compose.ui:ui-tooling-preview")
+    implementation("androidx.compose.material3:material3")
+    implementation("androidx.compose.material:material-icons-extended")
 
-    implementation(libs.lifecycle.viewmodel.compose)
-    implementation(libs.lifecycle.runtime.compose)
+    implementation("androidx.lifecycle:lifecycle-viewmodel-compose:2.7.0")
+    implementation("androidx.lifecycle:lifecycle-runtime-compose:2.7.0")
 
-    implementation(libs.retrofit)
-    implementation(libs.retrofit.converter.gson)
-    implementation(libs.okhttp)
-    implementation(libs.okhttp.logging)
+    implementation("androidx.navigation:navigation-compose:2.7.7")
 
-    implementation(libs.coroutines.android)
+    implementation("com.squareup.retrofit2:retrofit:2.9.0")
+    implementation("com.squareup.retrofit2:converter-gson:2.9.0")
+    implementation("com.squareup.okhttp3:okhttp:4.12.0")
+    implementation("com.squareup.okhttp3:logging-interceptor:4.12.0")
 
-    implementation(libs.datastore.preferences)
+    implementation("org.jetbrains.kotlinx:kotlinx-coroutines-android:1.8.0")
 
-    debugImplementation(libs.compose.ui.tooling)
-    debugImplementation(libs.compose.ui.test.manifest)
+    implementation("androidx.datastore:datastore-preferences:1.0.0")
+    implementation("androidx.security:security-crypto:1.1.0-alpha06")
 
-    testImplementation(libs.junit)
-    testImplementation(libs.coroutines.test)
-    testImplementation(libs.mockk)
+    debugImplementation("androidx.compose.ui:ui-tooling")
+    debugImplementation("androidx.compose.ui:ui-test-manifest")
+
+    testImplementation("junit:junit:4.13.2")
+    testImplementation("org.jetbrains.kotlinx:kotlinx-coroutines-test:1.8.0")
+    testImplementation("io.mockk:mockk:1.13.9")
 }
