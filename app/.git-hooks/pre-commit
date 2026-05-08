@@ -1,0 +1,71 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+ROOT_DIR="$(git rev-parse --show-toplevel 2>/dev/null || echo "$(cd "$(dirname "$0")/../.." && pwd)")"
+BUILD_FILE="$ROOT_DIR/app/build.gradle.kts"
+PASS=true
+
+red()   { printf '\033[31m%s\033[0m\n' "$*" >&2; }
+green() { printf '\033[32m%s\033[0m\n' "$*"; }
+
+# ── Check 1: isMinifyEnabled must not be false ──
+check_minify() {
+    if grep -q 'isMinifyEnabled\s*=\s*false' "$BUILD_FILE" 2>/dev/null; then
+        red "[FAIL] isMinifyEnabled is set to false in app/build.gradle.kts (release block)"
+        return 1
+    fi
+    green "[PASS] isMinifyEnabled is not false"
+}
+
+# ── Check 2: no hardcoded dependency strings ──
+check_hardcoded_deps() {
+    local violations=0
+    while IFS= read -r line; do
+        if echo "$line" | grep -qE 'implementation\s*\(\s*"(androidx|com\.squareup|org\.jetbrains|junit)'; then
+            red "[FAIL] Hardcoded dependency found: $(echo "$line" | sed 's/^[[:space:]]*//')"
+            violations=$((violations + 1))
+        fi
+    done < "$BUILD_FILE"
+    if [ "$violations" -gt 0 ]; then
+        return 1
+    fi
+    green "[PASS] No hardcoded dependency strings"
+}
+
+# ── Check 3: proguard-rules.pro referenced and exists ──
+check_proguard() {
+    if ! grep -q 'proguard-rules\.pro' "$BUILD_FILE" 2>/dev/null; then
+        red "[FAIL] proguard-rules.pro is not referenced in app/build.gradle.kts"
+        return 1
+    fi
+    if [ ! -f "$ROOT_DIR/app/proguard-rules.pro" ]; then
+        red "[FAIL] app/proguard-rules.pro does not exist on disk"
+        return 1
+    fi
+    green "[PASS] proguard-rules.pro is referenced and exists"
+}
+
+# ── Check 4: build and tests pass ──
+check_build() {
+    echo "[INFO] Running ./gradlew assembleDebug testDebugUnitTest ..."
+    if ! (cd "$ROOT_DIR" && ANDROID_HOME="${ANDROID_HOME:-$HOME/android-sdk}" ./gradlew assembleDebug testDebugUnitTest --no-daemon 2>&1); then
+        red "[FAIL] Build or tests failed"
+        return 1
+    fi
+    green "[PASS] Build and tests succeeded"
+}
+
+# ── Run checks ──
+check_minify    || PASS=false
+check_hardcoded_deps || PASS=false
+check_proguard  || PASS=false
+check_build     || PASS=false
+
+echo ""
+if [ "$PASS" = true ]; then
+    green "All pre-commit checks passed"
+    exit 0
+else
+    red "Some pre-commit checks FAILED"
+    exit 1
+fi
