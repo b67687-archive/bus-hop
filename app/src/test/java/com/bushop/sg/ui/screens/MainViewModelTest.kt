@@ -367,7 +367,7 @@ class MainViewModelTest {
         val stop = viewModel.savedStops.value.find { it.busStop.code == "12345" }
         assertNotNull(stop)
         // Loading should be cleared even on failure
-        assertFalse("Loading should be cleared after failure", stop!!.isLoading)
+        assertFalse("Loading should be cleared after failure", stop?.isLoading ?: true)
         // isRefreshing should be reset after manual refresh
         assertFalse("isRefreshing should be false after completion", viewModel.isRefreshing)
     }
