@@ -1,5 +1,6 @@
 package com.bushop.sg.ui.screens
 
+import androidx.lifecycle.viewModelScope
 import com.bushop.sg.data.local.BusStopEntry
 import com.bushop.sg.data.local.BusStopIndex
 import com.bushop.sg.data.local.DuplicateStopException
@@ -77,7 +78,7 @@ class MainViewModelTest {
 
     @After
     fun tearDown() {
-        viewModel.onCleared()
+        viewModel.viewModelScope.cancel()
         Dispatchers.resetMain()
     }
 
