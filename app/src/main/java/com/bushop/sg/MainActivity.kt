@@ -13,7 +13,7 @@ import androidx.lifecycle.lifecycleScope
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.bushop.sg.data.local.BusStopIndex
 import com.bushop.sg.data.local.BusStopStorage
-import com.bushop.sg.data.repository.BusRepository
+import com.bushop.sg.data.repository.BusRepositoryImpl
 import com.bushop.sg.ui.screens.MainScreen
 import com.bushop.sg.ui.screens.MainViewModel
 import com.bushop.sg.ui.theme.BusHopTheme
@@ -26,7 +26,7 @@ class MainActivity : ComponentActivity() {
         enableEdgeToEdge()
 
         val storage = BusStopStorage(applicationContext)
-        val repository = BusRepository(storage)
+        val repository = BusRepositoryImpl(storage)
         val busStopIndex = BusStopIndex(applicationContext).also { idx ->
             // Kick off background load — scoped to Activity lifecycle
             lifecycleScope.launch(Dispatchers.IO) { idx.load() }
