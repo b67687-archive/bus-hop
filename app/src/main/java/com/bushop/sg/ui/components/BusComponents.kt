@@ -110,6 +110,16 @@ fun BusStopCard(
             ) {
                 Column(modifier = Modifier.weight(1f)) {
                     if (busStopName.isNotBlank()) {
+                        val nameTextStyle = MaterialTheme.typography.titleLarge
+                        val dynamicFontSize = remember(busStopName) {
+                            when {
+                                busStopName.length > 45 -> nameTextStyle.fontSize * 0.55f
+                                busStopName.length > 35 -> nameTextStyle.fontSize * 0.65f
+                                busStopName.length > 25 -> nameTextStyle.fontSize * 0.80f
+                                busStopName.length > 18 -> nameTextStyle.fontSize * 0.90f
+                                else -> nameTextStyle.fontSize
+                            }
+                        }
                         Box(
                             modifier = Modifier
                                 .clip(RoundedCornerShape(10.dp))
@@ -118,7 +128,8 @@ fun BusStopCard(
                         ) {
                             Text(
                                 text = busStopName,
-                                style = MaterialTheme.typography.titleLarge,
+                                fontSize = dynamicFontSize,
+                                style = nameTextStyle.copy(fontSize = dynamicFontSize),
                                 fontWeight = FontWeight.Bold,
                                 maxLines = 1,
                                 overflow = TextOverflow.Ellipsis
@@ -226,6 +237,16 @@ fun BusStopCard(
                         services.isEmpty() && !isLoading -> {
                             Text(
                                 text = "No buses available",
+                                style = MaterialTheme.typography.bodyMedium,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant
+                            )
+                        }
+                        services.all { it.next == null && it.subsequent == null && it.next3 == null } && !isLoading -> {
+                            val now = java.util.Calendar.getInstance()
+                            val hour = now.get(java.util.Calendar.HOUR_OF_DAY)
+                            Text(
+                                text = if (hour >= 23 || hour < 6) "All buses have stopped running for the night"
+                                       else "No upcoming buses at this stop",
                                 style = MaterialTheme.typography.bodyMedium,
                                 color = MaterialTheme.colorScheme.onSurfaceVariant
                             )
@@ -455,53 +476,39 @@ fun BusServiceRow(service: BusService, isPinned: Boolean = false, onTogglePinSer
             horizontalAlignment = Alignment.End,
             verticalArrangement = Arrangement.spacedBy(2.dp)
         ) {
-            service.next?.let { next ->
-                val arrival = next.toDisplayArrival()
-                Box(
-                    modifier = Modifier
-                        .widthIn(min = 56.dp)
-                        .clip(RoundedCornerShape(8.dp))
-                        .background(MaterialTheme.colorScheme.primaryContainer)
-                        .padding(horizontal = 12.dp, vertical = 2.dp)
-                ) {
-                    Text(
-                        text = arrival.eta,
-                        style = MaterialTheme.typography.titleLarge,
-                        fontWeight = FontWeight.Bold,
-                        color = MaterialTheme.colorScheme.onPrimaryContainer,
-                        textAlign = TextAlign.Center
-                    )
-                }
-            }
-            service.subsequent?.let { subsequent ->
-                val arrival2 = subsequent.toDisplayArrival()
+            // First timing — always show
+            val nextArrival = service.next?.toDisplayArrival()
+            Box(
+                modifier = Modifier
+                    .widthIn(min = 56.dp)
+                    .clip(RoundedCornerShape(8.dp))
+                    .background(MaterialTheme.colorScheme.primaryContainer)
+                    .padding(horizontal = 12.dp, vertical = 2.dp)
+            ) {
                 Text(
-                    text = arrival2.eta,
-                    style = MaterialTheme.typography.bodySmall,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                    textAlign = TextAlign.End
+                    text = nextArrival?.eta ?: "--",
+                    style = MaterialTheme.typography.titleLarge,
+                    fontWeight = FontWeight.Bold,
+                    color = MaterialTheme.colorScheme.onPrimaryContainer,
+                    textAlign = TextAlign.Center
                 )
             }
-            service.next3?.let { next3 ->
-                val arrival3 = next3.toDisplayArrival()
-                Text(
-                    text = arrival3.eta,
-                    style = MaterialTheme.typography.labelSmall,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                    textAlign = TextAlign.End
-                )
-            }
-            if (service.next == null && service.subsequent == null && service.next3 == null) {
-                val now = java.util.Calendar.getInstance()
-                val hour = now.get(java.util.Calendar.HOUR_OF_DAY)
-                val isLateNight = hour >= 23 || hour < 6
-                Text(
-                    text = if (isLateNight) "Last bus may have departed" else "No upcoming bus",
-                    style = MaterialTheme.typography.labelSmall,
-                    color = if (isLateNight) MaterialTheme.colorScheme.error else MaterialTheme.colorScheme.onSurfaceVariant,
-                    textAlign = TextAlign.End
-                )
-            }
+            // Second timing — always show
+            val subArrival = service.subsequent?.toDisplayArrival()
+            Text(
+                text = subArrival?.eta ?: "--",
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                textAlign = TextAlign.End
+            )
+            // Third timing — always show
+            val next3Arrival = service.next3?.toDisplayArrival()
+            Text(
+                text = next3Arrival?.eta ?: "--",
+                style = MaterialTheme.typography.labelSmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                textAlign = TextAlign.End
+            )
         }
     }
 }

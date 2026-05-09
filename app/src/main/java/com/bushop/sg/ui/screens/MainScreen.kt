@@ -73,6 +73,7 @@ import androidx.compose.ui.unit.dp
 import com.bushop.sg.data.local.BusStopEntry
 import com.bushop.sg.domain.model.ThemeMode
 import com.bushop.sg.ui.components.AddBusStopDialog
+import com.bushop.sg.BuildConfig
 import com.bushop.sg.ui.components.BusStopCard
 
 private val timeFormatter = java.time.format.DateTimeFormatter.ofPattern("HH:mm")
@@ -267,11 +268,12 @@ fun MainScreen(viewModel: MainViewModel) {
         Box(
             modifier = Modifier
                 .fillMaxSize()
-                .padding(
-                    start = paddingValues.calculateLeftPadding(LayoutDirection.Ltr),
-                    end = paddingValues.calculateRightPadding(LayoutDirection.Ltr),
-                    bottom = paddingValues.calculateBottomPadding()
-                )
+        .padding(
+            start = paddingValues.calculateLeftPadding(LayoutDirection.Ltr),
+            top = paddingValues.calculateTopPadding(),
+            end = paddingValues.calculateRightPadding(LayoutDirection.Ltr),
+            bottom = paddingValues.calculateBottomPadding()
+        )
         ) {
             Column(modifier = Modifier.fillMaxSize()) {
                 ApiStatusBanner(
@@ -515,7 +517,11 @@ private fun SettingsSheet(
                     }
                 }
                 Spacer(modifier = Modifier.height(16.dp))
-                Text("v0.6.2", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                Text(
+                    text = "v${BuildConfig.VERSION_NAME}",
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
             }
         },
         confirmButton = { TextButton(onClick = onDismiss) { Text("Done") } }

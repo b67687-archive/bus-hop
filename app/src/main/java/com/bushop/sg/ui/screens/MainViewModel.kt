@@ -395,6 +395,7 @@ class MainViewModel(
 
     fun togglePinService(stopCode: String, serviceNo: String) {
         val key = "$stopCode:$serviceNo"
+        val wasPinned = key in _pinnedServices.value
         val updated = _pinnedServices.value.toMutableSet().apply {
             if (contains(key)) remove(key) else add(key)
         }
@@ -402,6 +403,10 @@ class MainViewModel(
         viewModelScope.launch {
             repository.savePinnedServices(updated)
         }
+        _snackbarMessage.tryEmit(
+            if (!wasPinned) "Pinned bus $serviceNo"
+            else "Unpinned bus $serviceNo"
+        )
     }
 
     fun isServicePinned(stopCode: String, serviceNo: String): Boolean =
@@ -416,6 +421,11 @@ class MainViewModel(
             }.let { list ->
                 useCase.applyPinning(list, wasPinned, additionOrder)
             }
+            val stopName = _savedStops.value.find { it.busStop.code == code }?.busStop?.name ?: code
+            _snackbarMessage.tryEmit(
+                if (!wasPinned) "Pinned stop $stopName"
+                else "Unpinned stop $stopName"
+            )
         }
     }
 
