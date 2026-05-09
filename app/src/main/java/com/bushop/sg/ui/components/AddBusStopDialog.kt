@@ -162,7 +162,7 @@ fun AddBusStopDialog(
                         onConfirm(entry.code, entry.name)
                     } else if (searchQuery.length == 5 && searchQuery.all { it.isDigit() }) {
                         // Manual code entry — try to find name from index, use code if not found
-                        onConfirm(searchQuery, "")
+                        onConfirm(searchQuery, searchQuery)
                     } else {
                         // User typed something but it's not a valid code — try searching
                         onSearchQueryChanged(searchQuery)

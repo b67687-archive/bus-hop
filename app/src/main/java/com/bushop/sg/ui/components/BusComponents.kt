@@ -14,9 +14,8 @@ import androidx.compose.foundation.clickable
 import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.material.icons.filled.Chair
+import androidx.compose.material.icons.filled.DirectionsBus
 import androidx.compose.material.icons.filled.DirectionsWalk
-import androidx.compose.material.icons.filled.DirectionsTransit
-import androidx.compose.material.icons.filled.Layers
 import androidx.compose.material.icons.outlined.DirectionsBus
 import androidx.compose.material.icons.filled.Warning
 
@@ -404,8 +403,8 @@ fun BusServiceRow(service: BusService, isPinned: Boolean = false, onTogglePinSer
                 Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(6.dp)) {
                     Icon(
                         imageVector = when {
-                            arrival.busType.contains("Double") -> Icons.Default.Layers
-                            arrival.busType.contains("Bendy") -> Icons.Default.DirectionsTransit
+                            arrival.busType.contains("Double") -> Icons.Filled.DirectionsBus
+                            arrival.busType.contains("Bendy") -> Icons.Filled.DirectionsBus
                             else -> Icons.Outlined.DirectionsBus
                         },
                         contentDescription = null,

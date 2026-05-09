@@ -47,6 +47,7 @@ import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.material3.TopAppBarDefaults
+import androidx.compose.ui.graphics.Color
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.animateColorAsState
 import androidx.compose.animation.core.tween
@@ -244,9 +245,9 @@ fun MainScreen(viewModel: MainViewModel) {
                     }
                 },
                 colors = TopAppBarDefaults.centerAlignedTopAppBarColors(
-                    containerColor = MaterialTheme.colorScheme.background.copy(alpha = 0.7f),
+                    containerColor = Color.Transparent,
                     titleContentColor = MaterialTheme.colorScheme.onBackground,
-                    scrolledContainerColor = MaterialTheme.colorScheme.background.copy(alpha = 0.95f)
+                    scrolledContainerColor = MaterialTheme.colorScheme.surface.copy(alpha = 0.85f)
                 )
             )
         },
@@ -418,7 +419,13 @@ fun MainScreen(viewModel: MainViewModel) {
             },
             onDismiss = { viewModel.hideAddStopDialog() },
             onConfirm = { code, name ->
-                viewModel.addBusStop(code, name)
+                // If name equals code (manual entry), try to find the real name
+                val resolvedName = if (name == code) {
+                    viewModel.findBusStopByCode(code)?.name ?: name
+                } else {
+                    name
+                }
+                viewModel.addBusStop(code, resolvedName)
             }
         )
     }
