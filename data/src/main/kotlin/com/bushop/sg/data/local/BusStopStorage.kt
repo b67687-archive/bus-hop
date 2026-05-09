@@ -48,7 +48,8 @@ class BusStopStorage(private val context: Context) {
             val stops: MutableList<BusStop> = try {
                 gson.fromJson(json, type) ?: mutableListOf()
             } catch (e: Exception) {
-                mutableListOf()
+                result = Result.failure(Exception("Failed to read saved stops"))
+                return@edit
             }
             
             if (stops.any { it.code == stop.code }) {
@@ -68,7 +69,7 @@ class BusStopStorage(private val context: Context) {
             val stops: MutableList<BusStop> = try {
                 gson.fromJson(json, type) ?: mutableListOf()
             } catch (e: Exception) {
-                mutableListOf()
+                return@edit  // Abort — don't overwrite with empty list
             }
             
             stops.removeAll { it.code == code }

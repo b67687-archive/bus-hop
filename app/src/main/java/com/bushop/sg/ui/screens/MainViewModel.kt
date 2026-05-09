@@ -38,6 +38,8 @@ class MainViewModel(
     private val refreshCoordinator: StopRefreshCoordinator = StopRefreshCoordinator()
 ) : ViewModel() {
 
+    private var isAutoRefreshing = false
+
     private val autoRefreshController = AutoRefreshController(viewModelScope)
 
     private val _savedStops = MutableStateFlow<List<BusStopWithArrivals>>(emptyList())
@@ -127,7 +129,7 @@ class MainViewModel(
                 lastUpdatedAll = list.maxOfOrNull { it.lastUpdated } ?: lastUpdatedAll
                 val pinnedFirst = list.sortedByDescending { it.isPinned }
                 _savedStops.value = pinnedFirst
-                if (pinnedFirst.isNotEmpty() && pinnedFirst.any { it.services.isEmpty() || it.isStale }) {
+                if (pinnedFirst.isNotEmpty() && !isAutoRefreshing && pinnedFirst.any { it.services.isEmpty() || it.isStale }) {
                     refreshAll(isAutoRefresh = true)
                 }
             }
@@ -210,16 +212,20 @@ class MainViewModel(
     }
 
     private suspend fun refreshArrivalsInternal(code: String, isAutoRefresh: Boolean) {
-        val index = _savedStops.value.indexOfFirst { it.busStop.code == code }
-        if (index == -1) return
-
+        // Set loading state before API call (for manual refresh only)
         if (!isAutoRefresh) {
+            val idx = _savedStops.value.indexOfFirst { it.busStop.code == code }
+            if (idx == -1) return
             _savedStops.value = _savedStops.value.toMutableList().apply {
-                this[index] = this[index].copy(isLoading = true, error = null, isOffline = false)
+                this[idx] = this[idx].copy(isLoading = true, error = null, isOffline = false)
             }
         }
 
         val result = repository.getBusArrivals(code)
+
+        // Re-compute index — list may have changed during suspension
+        val index = _savedStops.value.indexOfFirst { it.busStop.code == code }
+        if (index == -1) return
 
         when (result) {
             is NetworkResult.Error -> {
@@ -247,9 +253,10 @@ class MainViewModel(
             is NetworkResult.Success -> {
                 consecutiveFailures = 0
                 _apiStatus.value = ApiStatus.Healthy
+                val sortedServices = useCase.sortServices(result.data, _sortByEarliest.value)
                 _savedStops.value = _savedStops.value.toMutableList().apply {
                     this[index] = this[index].copy(
-                        services = result.data,
+                        services = sortedServices,
                         isLoading = false,
                         error = null,
                         isOffline = false,
@@ -271,12 +278,18 @@ class MainViewModel(
 
     fun refreshAll(isAutoRefresh: Boolean = false) {
         if (isAutoRefresh) {
+            if (isAutoRefreshing) return
+            isAutoRefreshing = true
             viewModelScope.launch {
-                refreshCoordinator.refreshAllConcurrent(
-                    codes = _savedStops.value.map { it.busStop.code },
-                    isAutoRefresh = true,
-                    refreshBlock = { refreshArrivalsInternal(it, true) }
-                )
+                try {
+                    refreshCoordinator.refreshAllConcurrent(
+                        codes = _savedStops.value.map { it.busStop.code },
+                        isAutoRefresh = true,
+                        refreshBlock = { refreshArrivalsInternal(it, true) }
+                    )
+                } finally {
+                    isAutoRefreshing = false
+                }
             }
             return
         }
@@ -284,13 +297,16 @@ class MainViewModel(
         isRefreshing = true
         lastUpdatedAll = System.currentTimeMillis()
         viewModelScope.launch {
-            refreshCoordinator.refreshAllConcurrent(
-                codes = _savedStops.value.map { it.busStop.code },
-                isAutoRefresh = false,
-                refreshBlock = { refreshArrivalsInternal(it, false) }
-            )
-            delay(400)
-            isRefreshing = false
+            try {
+                refreshCoordinator.refreshAllConcurrent(
+                    codes = _savedStops.value.map { it.busStop.code },
+                    isAutoRefresh = false,
+                    refreshBlock = { refreshArrivalsInternal(it, false) }
+                )
+                delay(400)
+            } finally {
+                isRefreshing = false
+            }
         }
     }
 
