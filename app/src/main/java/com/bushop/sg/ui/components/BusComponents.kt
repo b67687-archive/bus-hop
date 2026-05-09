@@ -9,12 +9,15 @@ import androidx.compose.animation.fadeOut
 import androidx.compose.animation.shrinkVertically
 import androidx.compose.animation.expandVertically
 import androidx.compose.foundation.background
+import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.gestures.detectTapGestures
-import androidx.compose.material.icons.filled.Accessibility
 import androidx.compose.material.icons.filled.Chair
-import androidx.compose.material.icons.filled.DirectionsBus
+import androidx.compose.material.icons.filled.DirectionsWalk
+import androidx.compose.material.icons.filled.DirectionsTransit
 import androidx.compose.material.icons.filled.Layers
+import androidx.compose.material.icons.outlined.DirectionsBus
 import androidx.compose.material.icons.filled.Warning
 
 import androidx.compose.foundation.layout.Arrangement
@@ -326,6 +329,7 @@ private fun ErrorBanner(message: String, onRetry: () -> Unit) {
 }
 
 @Composable
+@OptIn(ExperimentalFoundationApi::class)
 fun BusServiceRow(service: BusService, isPinned: Boolean = false, onTogglePinService: (() -> Unit)? = null) {
     var showWabInfo by remember { mutableStateOf(false) }
 
@@ -334,10 +338,28 @@ fun BusServiceRow(service: BusService, isPinned: Boolean = false, onTogglePinSer
             .fillMaxWidth()
             .clip(RoundedCornerShape(12.dp))
             .background(MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.4f))
-            .clickable(onClick = { /* touch feedback only */ })
+            .then(
+                if (onTogglePinService != null) {
+                    Modifier.combinedClickable(
+                        onClick = {},
+                        onLongClick = onTogglePinService
+                    )
+                } else {
+                    Modifier.clickable(onClick = {})
+                }
+            )
             .padding(12.dp),
         verticalAlignment = Alignment.CenterVertically
     ) {
+        if (isPinned) {
+            Icon(
+                imageVector = Icons.Filled.PushPin,
+                contentDescription = "Pinned service",
+                modifier = Modifier.size(16.dp),
+                tint = MaterialTheme.colorScheme.primary
+            )
+            Spacer(modifier = Modifier.width(4.dp))
+        }
         Box(
             modifier = Modifier
                 .size(width = 56.dp, height = 44.dp)
@@ -351,20 +373,6 @@ fun BusServiceRow(service: BusService, isPinned: Boolean = false, onTogglePinSer
                 fontWeight = FontWeight.Bold,
                 color = MaterialTheme.colorScheme.onPrimary
             )
-        }
-
-        if (onTogglePinService != null) {
-            IconButton(
-                onClick = onTogglePinService,
-                modifier = Modifier.size(36.dp)
-            ) {
-                Icon(
-                    imageVector = if (isPinned) Icons.Filled.PushPin else Icons.Outlined.PushPin,
-                    contentDescription = if (isPinned) "Unpin service" else "Pin service",
-                    modifier = Modifier.size(18.dp),
-                    tint = if (isPinned) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant
-                )
-            }
         }
 
         Spacer(modifier = Modifier.width(12.dp))
@@ -392,16 +400,14 @@ fun BusServiceRow(service: BusService, isPinned: Boolean = false, onTogglePinSer
             Spacer(modifier = Modifier.height(4.dp))
             service.next?.let { next ->
                 val arrival = next.toDisplayArrival()
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    verticalAlignment = Alignment.CenterVertically,
-                    horizontalArrangement = Arrangement.spacedBy(6.dp)
-                ) {
+                // Bus type row
+                Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(6.dp)) {
                     Icon(
-                            imageVector = if (arrival.busType.contains("Double"))
-                            Icons.Default.Layers
-                        else
-                            Icons.Default.DirectionsBus,
+                        imageVector = when {
+                            arrival.busType.contains("Double") -> Icons.Default.Layers
+                            arrival.busType.contains("Bendy") -> Icons.Default.DirectionsTransit
+                            else -> Icons.Outlined.DirectionsBus
+                        },
                         contentDescription = null,
                         modifier = Modifier.size(16.dp),
                         tint = MaterialTheme.colorScheme.onSurfaceVariant
@@ -409,16 +415,15 @@ fun BusServiceRow(service: BusService, isPinned: Boolean = false, onTogglePinSer
                     Text(
                         text = arrival.busType,
                         style = MaterialTheme.typography.bodySmall,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant,
-                        maxLines = 1,
-                        overflow = TextOverflow.Ellipsis,
-                        modifier = Modifier.weight(1f)
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
                     )
-                    Text(text = " · ", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                }
+                // Load row
+                Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(6.dp)) {
                     Icon(
                         imageVector = when {
                             arrival.load.contains("Seats") -> Icons.Default.Chair
-                            arrival.load.contains("Standing") -> Icons.Default.Accessibility
+                            arrival.load.contains("Standing") -> Icons.Default.DirectionsWalk
                             else -> Icons.Default.Warning
                         },
                         contentDescription = null,
@@ -431,8 +436,7 @@ fun BusServiceRow(service: BusService, isPinned: Boolean = false, onTogglePinSer
                     Text(
                         text = arrival.load,
                         style = MaterialTheme.typography.bodySmall,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant,
-                        maxLines = 1
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
                     )
                 }
             }

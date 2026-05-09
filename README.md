@@ -42,7 +42,7 @@
 
 ## Download
 
-> **Latest release:** [v0.6.6](https://github.com/B67687/BusHop-SG/releases/latest) — `app-debug-bus-hop.apk` (17 MB)
+> **Latest release:** [v0.6.7](https://github.com/B67687/BusHop-SG/releases/latest) — `app-debug-bus-hop.apk` (17 MB)
 
 Or build from source (see below).
 
