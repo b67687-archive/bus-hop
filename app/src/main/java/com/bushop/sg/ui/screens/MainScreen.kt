@@ -396,14 +396,14 @@ fun MainScreen(viewModel: MainViewModel) {
     }
 
     if (viewModel.addStopDialogVisible) {
-        var searchResults by remember { mutableStateOf<List<BusStopEntry>>(emptyList()) }
+        val searchResults by viewModel.searchResults.collectAsState()
 
         AddBusStopDialog(
             error = viewModel.addStopError,
             isLoading = viewModel.addStopIsLoading,
             searchResults = searchResults,
             onSearchQueryChanged = { query ->
-                searchResults = viewModel.searchBusStops(query)
+                viewModel.searchBusStops(query)
             },
             onDismiss = { viewModel.hideAddStopDialog() },
             onConfirm = { code, name ->

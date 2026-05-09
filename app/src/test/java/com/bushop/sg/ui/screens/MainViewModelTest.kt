@@ -18,6 +18,7 @@ import io.mockk.verify
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.test.StandardTestDispatcher
 import kotlinx.coroutines.test.advanceUntilIdle
 import kotlinx.coroutines.test.runTest
@@ -385,14 +386,14 @@ class MainViewModelTest {
     // ── Search ──
 
     @Test
-    fun `searchBusStops delegates to index`() {
+    fun `searchBusStops delegates to index`() = runTest(testDispatcher) {
         every { busStopIndex.search("123") } returns listOf(
             BusStopEntry("12345", "Test Stop", "Test Rd")
         )
 
-        val results = viewModel.searchBusStops("123")
+        viewModel.searchBusStops("123")
+        val results = viewModel.searchResults.first { it.isNotEmpty() }
 
-        assertTrue(results.isNotEmpty())
         assertEquals("12345", results.first().code)
         verify { busStopIndex.search("123") }
     }
