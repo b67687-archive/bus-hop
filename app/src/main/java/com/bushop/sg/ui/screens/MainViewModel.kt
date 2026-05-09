@@ -245,6 +245,8 @@ class MainViewModel(
                 }
             }
             is NetworkResult.Success -> {
+                consecutiveFailures = 0
+                _apiStatus.value = ApiStatus.Healthy
                 _savedStops.value = _savedStops.value.toMutableList().apply {
                     this[index] = this[index].copy(
                         services = result.data,
