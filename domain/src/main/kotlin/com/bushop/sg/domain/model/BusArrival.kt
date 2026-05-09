@@ -40,9 +40,9 @@ fun BusInfo.toDisplayArrival(): DisplayArrival {
         },
         isWheelchairAccessible = feature == "WAB",
         busType = when (type) {
-            "SD" -> "Single Decker"
-            "DD" -> "Double Decker"
-            "BD" -> "Bendy"
+            "SD", "Single" -> "Single Decker"
+            "DD", "Double" -> "Double Decker"
+            "BD", "Bendy" -> "Bendy"
             else -> type
         }
     )

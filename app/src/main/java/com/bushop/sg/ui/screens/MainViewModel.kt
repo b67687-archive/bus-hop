@@ -6,6 +6,7 @@ import androidx.compose.runtime.setValue
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.ViewModelProvider
 import androidx.lifecycle.viewModelScope
+import com.bushop.sg.data.local.BusStopEntry
 import com.bushop.sg.data.local.BusStopIndex
 import com.bushop.sg.domain.model.DuplicateStopException
 import com.bushop.sg.domain.model.BusStop
@@ -26,6 +27,7 @@ import kotlinx.coroutines.flow.asSharedFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.CancellationException
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import java.io.IOException
 
@@ -102,6 +104,9 @@ class MainViewModel(
 
     val isIndexReady: StateFlow<Boolean> = busStopIndex.isReady
 
+    private val _searchResults = MutableStateFlow<List<BusStopEntry>>(emptyList())
+    val searchResults: StateFlow<List<BusStopEntry>> = _searchResults.asStateFlow()
+
     // Reference addition order from repository (used to restore position on unpin)
     private var additionOrder: List<String> = emptyList()
 
@@ -176,7 +181,12 @@ class MainViewModel(
         addStopDialogVisible = true
     }
 
-    fun searchBusStops(query: String) = busStopIndex.search(query)
+    fun searchBusStops(query: String) {
+        viewModelScope.launch(Dispatchers.Default) {
+            val results = busStopIndex.search(query)
+            _searchResults.value = results
+        }
+    }
 
     fun findBusStopByCode(code: String) = busStopIndex.findByCode(code)
 
