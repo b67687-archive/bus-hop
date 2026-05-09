@@ -1,7 +1,7 @@
 # BusHop-SG ProGuard Rules
 
 # Keep data model classes for Gson serialization
--keep class com.bushop.sg.data.model.** { *; }
+-keep class com.bushop.sg.domain.model.** { *; }
 
 # Keep coroutine internals (required for R8 full mode)
 -keepnames class kotlinx.coroutines.internal.MainDispatcherFactory {}
