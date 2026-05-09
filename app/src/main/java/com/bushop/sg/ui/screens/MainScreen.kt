@@ -19,6 +19,7 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.BrightnessAuto
 import androidx.compose.material.icons.filled.Check
+import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.DarkMode
 import androidx.compose.material.icons.filled.DirectionsBus
 import androidx.compose.material.icons.filled.Settings
@@ -27,6 +28,8 @@ import androidx.compose.material.icons.filled.Refresh
 import androidx.compose.material.icons.automirrored.filled.Sort
 import androidx.compose.material.icons.automirrored.outlined.Sort
 import androidx.compose.material3.AlertDialog
+import androidx.compose.material3.Card
+import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.CenterAlignedTopAppBar
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.FloatingActionButton
@@ -39,8 +42,11 @@ import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.material3.TopAppBarDefaults
+import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.animateColorAsState
 import androidx.compose.animation.core.tween
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
@@ -70,11 +76,80 @@ private fun formatLastUpdated(timestamp: Long): String {
     return timeFormatter.format(zdt)
 }
 
+@Composable
+private fun ApiStatusBanner(
+    status: ApiStatus,
+    onDismiss: () -> Unit
+) {
+    val visible = status != ApiStatus.Healthy
+    val bgColor: androidx.compose.ui.graphics.Color
+    val textColor: androidx.compose.ui.graphics.Color
+    val message: String
+    val showDismiss: Boolean
+    when (status) {
+        ApiStatus.Healthy -> {
+            bgColor = MaterialTheme.colorScheme.surface
+            textColor = MaterialTheme.colorScheme.onSurface
+            message = ""
+            showDismiss = false
+        }
+        ApiStatus.Degraded -> {
+            bgColor = MaterialTheme.colorScheme.tertiaryContainer
+            textColor = MaterialTheme.colorScheme.onTertiaryContainer
+            message = "Bus arrival data may be delayed"
+            showDismiss = false
+        }
+        ApiStatus.Down -> {
+            bgColor = MaterialTheme.colorScheme.errorContainer
+            textColor = MaterialTheme.colorScheme.onErrorContainer
+            message = "Bus arrival API is under maintenance. Some data may be unavailable."
+            showDismiss = true
+        }
+    }
+
+    AnimatedVisibility(
+        visible = visible,
+        enter = fadeIn(),
+        exit = fadeOut()
+    ) {
+        Card(
+            colors = CardDefaults.cardColors(containerColor = bgColor),
+            shape = RoundedCornerShape(8.dp),
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(horizontal = 16.dp, vertical = 8.dp)
+        ) {
+            Row(
+                modifier = Modifier.padding(12.dp),
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Text(
+                    text = message,
+                    style = MaterialTheme.typography.bodySmall,
+                    color = textColor,
+                    modifier = Modifier.weight(1f)
+                )
+                if (showDismiss) {
+                    IconButton(onClick = onDismiss, modifier = Modifier.size(24.dp)) {
+                        Icon(
+                            Icons.Filled.Close,
+                            contentDescription = "Dismiss",
+                            tint = textColor,
+                            modifier = Modifier.size(18.dp)
+                        )
+                    }
+                }
+            }
+        }
+    }
+}
+
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun MainScreen(viewModel: MainViewModel) {
     val savedStops by viewModel.savedStops.collectAsState()
     val sortByEarliest by viewModel.sortByEarliest.collectAsState()
+    val apiStatus by viewModel.apiStatus.collectAsState()
     var showSettings by remember { mutableStateOf(false) }
     val snackbarHostState = remember { SnackbarHostState() }
     val scrollBehavior = TopAppBarDefaults.pinnedScrollBehavior()
@@ -181,26 +256,32 @@ fun MainScreen(viewModel: MainViewModel) {
         }
     ) { paddingValues ->
         Box(modifier = Modifier.fillMaxSize().padding(paddingValues)) {
-            if (savedStops.isEmpty()) {
-                Box(
-                    modifier = Modifier.fillMaxSize(),
-                    contentAlignment = Alignment.Center
-                ) {
-                    Text(
-                        text = "No bus stops saved yet.\nTap + to add your first stop.",
-                        style = MaterialTheme.typography.bodyLarge,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant,
-                        textAlign = TextAlign.Center
-                    )
-                }
-            } else {
-                LazyColumn(
-                    modifier = Modifier.fillMaxSize(),
-                    contentPadding = PaddingValues(
-                        start = 16.dp, end = 16.dp, top = 16.dp, bottom = 40.dp
-                    ),
-                    verticalArrangement = Arrangement.spacedBy(12.dp)
-                ) {
+            Column(modifier = Modifier.fillMaxSize()) {
+                ApiStatusBanner(
+                    status = apiStatus,
+                    onDismiss = { viewModel.dismissApiBanner() }
+                )
+                Box(modifier = Modifier.weight(1f).fillMaxWidth()) {
+                    if (savedStops.isEmpty()) {
+                        Box(
+                            modifier = Modifier.fillMaxSize(),
+                            contentAlignment = Alignment.Center
+                        ) {
+                            Text(
+                                text = "No bus stops saved yet.\nTap + to add your first stop.",
+                                style = MaterialTheme.typography.bodyLarge,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                textAlign = TextAlign.Center
+                            )
+                        }
+                    } else {
+                        LazyColumn(
+                            modifier = Modifier.fillMaxSize(),
+                            contentPadding = PaddingValues(
+                                start = 16.dp, end = 16.dp, top = 16.dp, bottom = 40.dp
+                            ),
+                            verticalArrangement = Arrangement.spacedBy(12.dp)
+                        ) {
                     items(
                         items = savedStops,
                         key = { it.busStop.code }
@@ -214,10 +295,12 @@ fun MainScreen(viewModel: MainViewModel) {
                             deleteTarget = stopWithArrivals.busStop.code
                         }
                     )
+                    }
                 }
-            }
-        }
-        if (viewModel.lastUpdatedAll > 0) {
+            }  // close else
+            }  // close inner Box
+            }  // close Column
+            if (viewModel.lastUpdatedAll > 0) {
             val pillBg by animateColorAsState(
                 targetValue = if (viewModel.isRefreshing)
                     MaterialTheme.colorScheme.primary.copy(alpha = 0.2f)
@@ -244,9 +327,9 @@ fun MainScreen(viewModel: MainViewModel) {
                     color = MaterialTheme.colorScheme.onSurfaceVariant
                 )
             }
-        }
-    }
-    }
+        }  // close pill if
+        }  // close outer Box
+        }  // close Scaffold content
 
     if (showSettings) {
         AlertDialog(

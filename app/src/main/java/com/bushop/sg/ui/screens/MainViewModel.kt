@@ -28,6 +28,9 @@ import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.launch
 import java.io.IOException
 
+/** Tracks the health of the external bus arrival API. */
+enum class ApiStatus { Healthy, Degraded, Down }
+
 class MainViewModel(
     private val repository: BusRepository,
     private val busStopIndex: BusStopIndex,
@@ -64,6 +67,18 @@ class MainViewModel(
 
     var lastUpdatedAll by mutableStateOf(0L)
         private set
+
+    // ── API health tracking ──
+
+    private val _apiStatus = MutableStateFlow(ApiStatus.Healthy)
+    val apiStatus: StateFlow<ApiStatus> = _apiStatus.asStateFlow()
+
+    private var consecutiveFailures = 0
+        private set
+
+    fun dismissApiBanner() {
+        _apiStatus.value = ApiStatus.Healthy
+    }
 
     // 0 = system, 1 = light, 2 = dark
     var themeMode by mutableStateOf(0)
@@ -151,7 +166,9 @@ class MainViewModel(
                         addStopIsLoading = false
                         return@launch
                     }
-                    is NetworkResult.Success -> {
+            is NetworkResult.Success -> {
+                consecutiveFailures = 0
+                _apiStatus.value = ApiStatus.Healthy
                         if (arrivalResult.data.isEmpty()) {
                             addStopError = "No bus services found at this stop."
                             addStopIsLoading = false
@@ -207,6 +224,12 @@ class MainViewModel(
         when (result) {
             is NetworkResult.Error -> {
                 val isOffline = result.exception is IOException
+                consecutiveFailures++
+                _apiStatus.value = when {
+                    consecutiveFailures >= 10 -> ApiStatus.Down
+                    consecutiveFailures >= 3 -> ApiStatus.Degraded
+                    else -> _apiStatus.value
+                }
                 if (!isAutoRefresh) {
                     _savedStops.value = _savedStops.value.toMutableList().apply {
                         this[index] = this[index].copy(
