@@ -3,7 +3,7 @@ package com.bushop.sg.ui.screens
 
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
-import androidx.compose.foundation.layout.WindowInsets
+import androidx.compose.ui.graphics.Color
 import androidx.compose.foundation.layout.Column
 import androidx.compose.ui.unit.LayoutDirection
 import androidx.compose.foundation.layout.PaddingValues
@@ -200,7 +200,6 @@ fun MainScreen(viewModel: MainViewModel) {
         topBar = {
             CenterAlignedTopAppBar(
                 scrollBehavior = scrollBehavior,
-                windowInsets = WindowInsets(0, 0, 0, 0),
                 title = { 
                     Row(
                         verticalAlignment = Alignment.CenterVertically,
@@ -261,9 +260,9 @@ fun MainScreen(viewModel: MainViewModel) {
                     }
                 },
                 colors = TopAppBarDefaults.centerAlignedTopAppBarColors(
-                    containerColor = MaterialTheme.colorScheme.surface.copy(alpha = 0.55f),
+                    containerColor = Color.Transparent,
                     titleContentColor = MaterialTheme.colorScheme.onBackground,
-                    scrolledContainerColor = MaterialTheme.colorScheme.surface.copy(alpha = 0.80f)
+                    scrolledContainerColor = MaterialTheme.colorScheme.surface.copy(alpha = 0.85f)
                 )
             )
         },
@@ -290,10 +289,6 @@ fun MainScreen(viewModel: MainViewModel) {
             bottom = paddingValues.calculateBottomPadding()
         )
         ) {
-            // ── Top bar translucency: content extends behind the bar ──
-            // The top bar starts at y=0 with windowInsets=0, overlapping the content area.
-            // The Scaffold provides status-bar-only top padding here.
-            // Content scrolls behind the bar, visible through the translucent containerColor.
             Column(modifier = Modifier.fillMaxSize()) {
                 ApiStatusBanner(
                     status = apiStatus,
@@ -336,7 +331,7 @@ fun MainScreen(viewModel: MainViewModel) {
                                 state = listState,
                                 modifier = Modifier.fillMaxSize(),
                                 contentPadding = PaddingValues(
-                                    start = 16.dp, end = 16.dp, top = 80.dp, bottom = 40.dp
+                                    start = 16.dp, end = 16.dp, top = 16.dp, bottom = 40.dp
                                 ),
                                 verticalArrangement = Arrangement.spacedBy(12.dp)
                             ) {
