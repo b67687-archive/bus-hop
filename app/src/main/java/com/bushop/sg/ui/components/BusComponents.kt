@@ -67,6 +67,7 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.input.pointer.pointerInput
+import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.window.Popup
 import com.bushop.sg.domain.model.BusService
 import com.bushop.sg.domain.model.BusStopWithArrivals
@@ -429,10 +430,12 @@ fun BusServiceRow(service: BusService, isPinned: Boolean = false, onTogglePinSer
                                 kotlinx.coroutines.delay(3000)
                                 showWabInfo = false
                             }
+                            val density = LocalDensity.current
+                            val popupOffsetPx = with(density) { 28.dp.roundToPx() }
                             Popup(
                                 alignment = Alignment.TopCenter,
                                 onDismissRequest = { showWabInfo = false },
-                                offset = IntOffset(0, -32)
+                                offset = IntOffset(0, -popupOffsetPx)
                             ) {
                                 Surface(
                                     shape = RoundedCornerShape(8.dp),
@@ -512,7 +515,7 @@ fun BusServiceRow(service: BusService, isPinned: Boolean = false, onTogglePinSer
             val isArriving = nextArrival?.eta == "Arr." || nextArrival?.eta == "Arr"
             Box(
                 modifier = Modifier
-                    .widthIn(min = 56.dp, max = 72.dp)
+                    .widthIn(max = 72.dp)
                     .clip(RoundedCornerShape(8.dp))
                     .background(
                         if (isArriving) Color(0xFF34C759)
