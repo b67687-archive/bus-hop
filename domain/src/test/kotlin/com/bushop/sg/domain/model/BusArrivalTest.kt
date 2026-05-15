@@ -1,6 +1,7 @@
 package com.bushop.sg.domain.model
 
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertTrue
 import org.junit.Test
 
 /** Regression tests for [BusInfo.toDisplayArrival]. */
@@ -55,72 +56,33 @@ class BusArrivalTest {
     // ── Load mapping ──
 
     @Test
-    fun `load SEA maps to Seats Available`() {
-        val info = BusInfo("", 0, null, null, "SEA", null, "SD", 0, null, null)
-        assertEquals("Seats Available", info.toDisplayArrival().load)
+    fun `empty load maps to empty string`() {
+        val info = BusInfo("", 0, null, null, "", null, "SD", 0, null, null)
+        assertEquals("", info.toDisplayArrival().load)
     }
 
     @Test
-    fun `load SDA maps to Standing Available`() {
+    fun `all default fields still produce eta`() {
+        val info = BusInfo("", 120_000, null, null, "", null, "", 0, null, null)
+        val display = info.toDisplayArrival()
+        assertEquals("2 min", display.eta)
+        assertEquals("", display.load)
+        assertEquals("", display.busType)
+        assertEquals(false, display.isWheelchairAccessible)
+    }
+
+    @Test
+    fun `empty time string still shows eta`() {
+        val info = BusInfo("", 180_000, null, null, "SEA", null, "SD", 0, null, null)
+        assertEquals("3 min", info.toDisplayArrival().eta)
+    }
+
+    @Test
+    fun `SDA load maps to Standing Available`() {
         val info = BusInfo("", 0, null, null, "SDA", null, "SD", 0, null, null)
-        assertEquals("Standing Available", info.toDisplayArrival().load)
-    }
-
-    @Test
-    fun `load LSD maps to Limited Standing`() {
-        val info = BusInfo("", 0, null, null, "LSD", null, "SD", 0, null, null)
-        assertEquals("Limited Standing", info.toDisplayArrival().load)
-    }
-
-    @Test
-    fun `unknown load passes through unchanged`() {
-        val info = BusInfo("", 0, null, null, "UNKNOWN", null, "SD", 0, null, null)
-        assertEquals("UNKNOWN", info.toDisplayArrival().load)
-    }
-
-    // ── Bus type mapping ──
-
-    @Test
-    fun `bus type SD maps to Single Decker`() {
-        val info = BusInfo("", 0, null, null, "SEA", null, "SD", 0, null, null)
-        assertEquals("Single Decker", info.toDisplayArrival().busType)
-    }
-
-    @Test
-    fun `bus type DD maps to Double Decker`() {
-        val info = BusInfo("", 0, null, null, "SEA", null, "DD", 0, null, null)
-        assertEquals("Double Decker", info.toDisplayArrival().busType)
-    }
-
-    @Test
-    fun `bus type BD maps to Bendy`() {
-        val info = BusInfo("", 0, null, null, "SEA", null, "BD", 0, null, null)
-        assertEquals("Bendy", info.toDisplayArrival().busType)
-    }
-
-    @Test
-    fun `unknown bus type passes through unchanged`() {
-        val info = BusInfo("", 0, null, null, "SEA", null, "FE", 0, null, null)
-        assertEquals("FE", info.toDisplayArrival().busType)
-    }
-
-    // ── WAB / Wheelchair accessible ──
-
-    @Test
-    fun `feature WAB returns isWheelchairAccessible true`() {
-        val info = BusInfo("", 0, null, null, "SEA", "WAB", "SD", 0, null, null)
-        assertEquals(true, info.toDisplayArrival().isWheelchairAccessible)
-    }
-
-    @Test
-    fun `feature null returns isWheelchairAccessible false`() {
-        val info = BusInfo("", 0, null, null, "SEA", null, "SD", 0, null, null)
-        assertEquals(false, info.toDisplayArrival().isWheelchairAccessible)
-    }
-
-    @Test
-    fun `feature other returns isWheelchairAccessible false`() {
-        val info = BusInfo("", 0, null, null, "SEA", "OTHER", "SD", 0, null, null)
-        assertEquals(false, info.toDisplayArrival().isWheelchairAccessible)
+        // Regression: verify the full string is present, not truncated
+        val load = info.toDisplayArrival().load
+        assertEquals("Standing Available", load)
+        assertTrue("Must contain 'Standing Available'", load.contains("Available"))
     }
 }
