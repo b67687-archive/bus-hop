@@ -470,7 +470,8 @@ fun BusServiceRow(service: BusService, isPinned: Boolean = false, onTogglePinSer
                     Text(
                         text = arrival.busType,
                         style = MaterialTheme.typography.bodySmall,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        maxLines = 1
                     )
                 }
                 // Load row
@@ -491,7 +492,8 @@ fun BusServiceRow(service: BusService, isPinned: Boolean = false, onTogglePinSer
                     Text(
                         text = arrival.load,
                         style = MaterialTheme.typography.bodySmall,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        maxLines = 1
                     )
                 }
             }
@@ -507,7 +509,7 @@ fun BusServiceRow(service: BusService, isPinned: Boolean = false, onTogglePinSer
             val isArriving = nextArrival?.eta == "Arr." || nextArrival?.eta == "Arr"
             Box(
                 modifier = Modifier
-                    .widthIn(min = 56.dp)
+                    .widthIn(min = 56.dp, max = 80.dp)
                     .clip(RoundedCornerShape(8.dp))
                     .background(
                         if (isArriving) Color(0xFF34C759)

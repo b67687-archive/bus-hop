@@ -63,8 +63,9 @@ tasks.register("checkAndRenameDebugApk") {
         val apkDir = layout.buildDirectory.dir("outputs/apk/debug").get().asFile
         val apk = apkDir.listFiles { f -> f.name.endsWith(".apk") }
             ?.filterNot { n -> n.name.contains("unsigned", ignoreCase = true) }
+            ?.filter { n -> n.length() > 1_000_000 }          // ignore stale artifacts < 1 MB
             ?.maxByOrNull { n -> n.lastModified() }
-            ?: throw GradleException("No debug APK found in $apkDir")
+            ?: throw GradleException("No valid debug APK found in $apkDir (all candidates < 1 MB — run clean)")
 
         val totalBytes = apk.length()
 
