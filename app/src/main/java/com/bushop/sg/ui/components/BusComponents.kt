@@ -63,6 +63,7 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.input.pointer.pointerInput
@@ -431,7 +432,7 @@ fun BusServiceRow(service: BusService, isPinned: Boolean = false, onTogglePinSer
                             Popup(
                                 alignment = Alignment.TopCenter,
                                 onDismissRequest = { showWabInfo = false },
-                                offset = IntOffset(0, -8)
+                                offset = IntOffset(0, -32)
                             ) {
                                 Surface(
                                     shape = RoundedCornerShape(8.dp),
@@ -471,7 +472,8 @@ fun BusServiceRow(service: BusService, isPinned: Boolean = false, onTogglePinSer
                         text = arrival.busType,
                         style = MaterialTheme.typography.bodySmall,
                         color = MaterialTheme.colorScheme.onSurfaceVariant,
-                        maxLines = 1
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis
                     )
                 }
                 // Load row
@@ -493,7 +495,8 @@ fun BusServiceRow(service: BusService, isPinned: Boolean = false, onTogglePinSer
                         text = arrival.load,
                         style = MaterialTheme.typography.bodySmall,
                         color = MaterialTheme.colorScheme.onSurfaceVariant,
-                        maxLines = 1
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis
                     )
                 }
             }
@@ -509,13 +512,13 @@ fun BusServiceRow(service: BusService, isPinned: Boolean = false, onTogglePinSer
             val isArriving = nextArrival?.eta == "Arr." || nextArrival?.eta == "Arr"
             Box(
                 modifier = Modifier
-                    .widthIn(min = 56.dp, max = 80.dp)
+                    .widthIn(min = 56.dp, max = 72.dp)
                     .clip(RoundedCornerShape(8.dp))
                     .background(
                         if (isArriving) Color(0xFF34C759)
                         else MaterialTheme.colorScheme.primaryContainer
                     )
-                    .padding(horizontal = 12.dp, vertical = 2.dp)
+                    .padding(horizontal = 8.dp, vertical = 2.dp)
             ) {
                 Text(
                     text = nextArrival?.eta ?: "--",

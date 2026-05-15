@@ -78,7 +78,7 @@ class BusStopUseCaseTest {
     }
 
     @Test
-    fun `sortServicesWithPins preserves original order among pinned items`() {
+    fun `sortServicesWithPins sorts pinned items by earliest ETA too`() {
         val bus15 = BusService("15", "GAS",
             next = BusInfo("", 180_000, null, null, "SEA", null, "SD", 0, null, null),
             subsequent = null, next3 = null)
@@ -87,8 +87,67 @@ class BusStopUseCaseTest {
             subsequent = null, next3 = null)
 
         val sorted = useCase.sortServicesWithPins(listOf(bus15, bus151), setOf("15", "151"), true)
-        assertEquals("15 comes first in original list", "15", sorted[0].serviceNo)
-        assertEquals("151 comes second in original list", "151", sorted[1].serviceNo)
+        assertEquals("Earlier ETA first among pinned", "151", sorted[0].serviceNo)
+        assertEquals("Later ETA second among pinned", "15", sorted[1].serviceNo)
+    }
+
+    @Test
+    fun `sortServicesWithPins empty list returns empty`() {
+        val sorted = useCase.sortServicesWithPins(emptyList(), setOf("15"), true)
+        assertTrue(sorted.isEmpty())
+    }
+
+    @Test
+    fun `sortServicesWithPins all pinned returns sorted pinned`() {
+        val bus15 = BusService("15", "GAS",
+            next = BusInfo("", 300_000, null, null, "SEA", null, "SD", 0, null, null),
+            subsequent = null, next3 = null)
+        val bus167 = BusService("167", "SBST",
+            next = BusInfo("", 60_000, null, null, "SEA", null, "SD", 0, null, null),
+            subsequent = null, next3 = null)
+        val sorted = useCase.sortServicesWithPins(listOf(bus15, bus167), setOf("15", "167"), true)
+        assertEquals("167", sorted[0].serviceNo) // earlier ETA
+        assertEquals("15", sorted[1].serviceNo)
+    }
+
+    @Test
+    fun `sortServicesWithPins none pinned returns sorted unpinned`() {
+        val bus15 = BusService("15", "GAS",
+            next = BusInfo("", 300_000, null, null, "SEA", null, "SD", 0, null, null),
+            subsequent = null, next3 = null)
+        val bus167 = BusService("167", "SBST",
+            next = BusInfo("", 60_000, null, null, "SEA", null, "SD", 0, null, null),
+            subsequent = null, next3 = null)
+        val sorted = useCase.sortServicesWithPins(listOf(bus15, bus167), emptySet(), true)
+        assertEquals("167", sorted[0].serviceNo)
+        assertEquals("15", sorted[1].serviceNo)
+    }
+
+    @Test
+    fun `sortServicesWithPins single pinned item works`() {
+        val bus15 = BusService("15", "GAS",
+            next = BusInfo("", 300_000, null, null, "SEA", null, "SD", 0, null, null),
+            subsequent = null, next3 = null)
+        val bus167 = BusService("167", "SBST",
+            next = BusInfo("", 60_000, null, null, "SEA", null, "SD", 0, null, null),
+            subsequent = null, next3 = null)
+        val sorted = useCase.sortServicesWithPins(listOf(bus15, bus167), setOf("15"), true)
+        assertEquals("15", sorted[0].serviceNo) // pinned first
+        assertEquals("167", sorted[1].serviceNo) // unpinned after
+    }
+
+    @Test
+    fun `sortServicesWithPins arriving bus first among pinned`() {
+        val arriving = BusService("15", "GAS",
+            next = BusInfo("", 30_000, null, null, "SEA", null, "SD", 0, null, null),
+            subsequent = null, next3 = null)
+        val later = BusService("167", "SBST",
+            next = BusInfo("", 180_000, null, null, "SEA", null, "SD", 0, null, null),
+            subsequent = null, next3 = null)
+        // Pinned, arriving (<60s = 0) should be before pinned, later
+        val sorted = useCase.sortServicesWithPins(listOf(later, arriving), setOf("15", "167"), true)
+        assertEquals("Arriving pinned bus first", "15", sorted[0].serviceNo)
+        assertEquals("Later pinned bus after", "167", sorted[1].serviceNo)
     }
 
     // ── applyPinning ──
@@ -169,6 +228,98 @@ class BusStopUseCaseTest {
         )
         val (result, codes) = useCase.toggleCollapsed(stops, "99999")
         assertEquals(stops, result)
+        assertTrue(codes.isEmpty())
+    }
+
+    // ── ApplyPinning edge cases ──
+
+    @Test
+    fun `applyPinning empty list returns empty`() {
+        val result = useCase.applyPinning(emptyList(), false, emptyList())
+        assertTrue(result.isEmpty())
+    }
+
+    @Test
+    fun `applyPinning all pinned keeps all at top`() {
+        val stops = listOf(
+            BusStopWithArrivals(BusStop("11111"), isPinned = true),
+            BusStopWithArrivals(BusStop("22222"), isPinned = true)
+        )
+        val result = useCase.applyPinning(stops, false, emptyList())
+        assertEquals(2, result.size)
+        assertTrue(result.all { it.isPinned })
+    }
+
+    @Test
+    fun `applyPinning no pinned stops keeps original order`() {
+        val stops = listOf(
+            BusStopWithArrivals(BusStop("11111"), isPinned = false),
+            BusStopWithArrivals(BusStop("22222"), isPinned = false)
+        )
+        val result = useCase.applyPinning(stops, false, listOf("11111", "22222"))
+        assertEquals(listOf("11111", "22222"), result.map { it.busStop.code })
+    }
+
+    @Test
+    fun `applyPinning unpinning with empty additionOrder`() {
+        val stops = listOf(
+            BusStopWithArrivals(BusStop("11111"), isPinned = false),
+            BusStopWithArrivals(BusStop("22222"), isPinned = false)
+        )
+        val result = useCase.applyPinning(stops, true, emptyList())
+        assertEquals(2, result.size)
+    }
+
+    @Test
+    fun `applyPinning single stop pinned`() {
+        val stops = listOf(
+            BusStopWithArrivals(BusStop("11111"), isPinned = true)
+        )
+        val result = useCase.applyPinning(stops, false, listOf("11111"))
+        assertEquals(listOf("11111"), result.map { it.busStop.code })
+        assertTrue(result.first().isPinned)
+    }
+
+    @Test
+    fun `applyPinning unpinning with missing codes in additionOrder`() {
+        val stops = listOf(
+            BusStopWithArrivals(BusStop("11111"), isPinned = false),
+            BusStopWithArrivals(BusStop("22222"), isPinned = false)
+        )
+        // additionOrder has extra codes not in stops — should not crash
+        val result = useCase.applyPinning(stops, true, listOf("11111", "33333", "22222"))
+        assertEquals(2, result.size)
+    }
+
+    // ── ToggleCollapse edge cases ──
+
+    @Test
+    fun `toggleCollapsed empty list returns empty`() {
+        val (result, codes) = useCase.toggleCollapsed(emptyList(), "11111")
+        assertTrue(result.isEmpty())
+        assertTrue(codes.isEmpty())
+    }
+
+    @Test
+    fun `toggleCollapsed on multiple stops only toggles one`() {
+        val stops = listOf(
+            BusStopWithArrivals(BusStop("11111"), isCollapsed = false),
+            BusStopWithArrivals(BusStop("22222"), isCollapsed = true),
+            BusStopWithArrivals(BusStop("33333"), isCollapsed = false)
+        )
+        val (result, codes) = useCase.toggleCollapsed(stops, "11111")
+        assertTrue(result[0].isCollapsed) // toggled
+        assertTrue(result[1].isCollapsed) // unchanged
+        assertFalse(result[2].isCollapsed) // unchanged
+        assertEquals(setOf("11111", "22222"), codes.toSet())
+    }
+
+    @Test
+    fun `toggleCollapsed single stop expand returns empty codes`() {
+        val stops = listOf(
+            BusStopWithArrivals(BusStop("11111"), isCollapsed = true)
+        )
+        val (_, codes) = useCase.toggleCollapsed(stops, "11111")
         assertTrue(codes.isEmpty())
     }
 }

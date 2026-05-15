@@ -23,8 +23,9 @@ class BusStopUseCase {
         sortByEarliest: Boolean
     ): List<BusService> {
         val (pinned, unpinned) = services.partition { it.serviceNo in pinnedServiceNos }
+        val sortedPinned = sortServices(pinned, sortByEarliest)
         val sortedUnpinned = sortServices(unpinned, sortByEarliest)
-        return pinned + sortedUnpinned
+        return sortedPinned + sortedUnpinned
     }
 
     /** Reorder pinned stops to top. Unpinning restores addition order. */
@@ -36,9 +37,9 @@ class BusStopUseCase {
         val pinned = stops.filter { it.isPinned }
         val unpinned = stops.filter { !it.isPinned }
         return if (wasPinned) {
-            val order = additionOrder.filter { code ->
-                unpinned.any { it.busStop.code == code }
-            }
+            // Restore original order from additionOrder; fall back to unpinned order if empty
+            val order = if (additionOrder.isNotEmpty()) additionOrder
+                        else unpinned.map { it.busStop.code }
             val sorted = order.mapNotNull { code ->
                 unpinned.find { it.busStop.code == code }
             }
