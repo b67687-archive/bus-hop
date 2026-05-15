@@ -47,7 +47,6 @@ import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.material3.TopAppBarDefaults
-import androidx.compose.ui.graphics.Color
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.animateColorAsState
 import androidx.compose.animation.core.tween
@@ -246,9 +245,9 @@ fun MainScreen(viewModel: MainViewModel) {
                     }
                 },
                 colors = TopAppBarDefaults.centerAlignedTopAppBarColors(
-                    containerColor = Color.Transparent,
+                    containerColor = MaterialTheme.colorScheme.surface.copy(alpha = 0.75f),
                     titleContentColor = MaterialTheme.colorScheme.onBackground,
-                    scrolledContainerColor = MaterialTheme.colorScheme.surface.copy(alpha = 0.85f)
+                    scrolledContainerColor = MaterialTheme.colorScheme.surface.copy(alpha = 0.92f)
                 )
             )
         },
@@ -368,9 +367,9 @@ fun MainScreen(viewModel: MainViewModel) {
         if (viewModel.lastUpdatedAll > 0) {
             val pillBg by animateColorAsState(
                 targetValue = if (viewModel.isRefreshing)
-                    MaterialTheme.colorScheme.primary.copy(alpha = 0.2f)
+                    MaterialTheme.colorScheme.primary.copy(alpha = 0.25f)
                 else
-                    MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.8f),
+                    MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.7f),
                 animationSpec = tween(durationMillis = 300)
             )
             Box(

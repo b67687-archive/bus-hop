@@ -55,3 +55,26 @@ proguard/
 !domain/build.gradle.kts
 !data/src/**/*.kt
 !data/build.gradle.kts
+
+# AI / workspace meta (not part of the Android project)
+.claude/
+.opencode/
+.pi/
+CLAUDE.md
+AGENTS.md
+session-state.json
+buglog.json
+topic-insights.md
+archive/
+commands/
+docs/
+propagated/
+~/
+sync-from-hub.ps1
+audit-folder-quality.ps1
+opencode-agent-system.md
+opencode.json
+meta/
+
+# Project subdir (synced to root, keep root as source of truth)
+bus-hop-content/

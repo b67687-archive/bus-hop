@@ -107,9 +107,6 @@ class MainViewModel(
     private val _searchResults = MutableStateFlow<List<BusStopEntry>>(emptyList())
     val searchResults: StateFlow<List<BusStopEntry>> = _searchResults.asStateFlow()
 
-    // Reference addition order from repository (used to restore position on unpin)
-    private var additionOrder: List<String> = emptyList()
-
     init {
         // Restore persisted preferences
         viewModelScope.launch {
@@ -165,11 +162,9 @@ class MainViewModel(
                     )
                 }
             }.collect { list ->
-                additionOrder = list.map { it.busStop.code }
                 lastUpdatedAll = list.maxOfOrNull { it.lastUpdated } ?: lastUpdatedAll
-                val pinnedFirst = list.sortedByDescending { it.isPinned }
-                _savedStops.value = pinnedFirst
-                if (pinnedFirst.isNotEmpty() && !isAutoRefreshing && pinnedFirst.any { it.services.isEmpty() || it.isStale }) {
+                _savedStops.value = list
+                if (list.isNotEmpty() && !isAutoRefreshing && list.any { it.services.isEmpty() || it.isStale }) {
                     refreshAll(isAutoRefresh = true)
                 }
             }
@@ -418,8 +413,6 @@ class MainViewModel(
             val wasPinned = _savedStops.value[index].isPinned
             _savedStops.value = _savedStops.value.toMutableList().apply {
                 this[index] = this[index].copy(isPinned = !this[index].isPinned)
-            }.let { list ->
-                useCase.applyPinning(list, wasPinned, additionOrder)
             }
             val stopName = _savedStops.value.find { it.busStop.code == code }?.busStop?.name ?: code
             _snackbarMessage.tryEmit(

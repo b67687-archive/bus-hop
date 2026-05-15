@@ -47,6 +47,7 @@ import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -58,10 +59,11 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
-import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.input.pointer.pointerInput
+import androidx.compose.ui.window.Popup
 import com.bushop.sg.domain.model.BusService
 import com.bushop.sg.domain.model.BusStopWithArrivals
 import com.bushop.sg.domain.model.toDisplayArrival
@@ -90,7 +92,10 @@ fun BusStopCard(
         modifier = modifier.fillMaxWidth(),
         shape = RoundedCornerShape(20.dp),
         colors = CardDefaults.cardColors(
-            containerColor = MaterialTheme.colorScheme.surface
+            containerColor = if (isPinned)
+                MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.5f)
+            else
+                MaterialTheme.colorScheme.surface
         ),
         elevation = CardDefaults.cardElevation(defaultElevation = 3.dp)
     ) {
@@ -122,6 +127,7 @@ fun BusStopCard(
                         }
                         Box(
                             modifier = Modifier
+                                .widthIn(max = 150.dp)
                                 .clip(RoundedCornerShape(10.dp))
                                 .background(MaterialTheme.colorScheme.primaryContainer)
                                 .padding(horizontal = 14.dp, vertical = 8.dp)
@@ -131,8 +137,7 @@ fun BusStopCard(
                                 fontSize = dynamicFontSize,
                                 style = nameTextStyle.copy(fontSize = dynamicFontSize),
                                 fontWeight = FontWeight.Bold,
-                                maxLines = 1,
-                                overflow = TextOverflow.Ellipsis
+                                maxLines = 3
                             )
                         }
                     } else {
@@ -168,21 +173,20 @@ fun BusStopCard(
                     }
                     Box(
                         modifier = Modifier
-                            .size(48.dp)
-                            .clip(CircleShape)
+                            .size(28.dp)
                             .clickable(onClick = onTogglePin),
                         contentAlignment = Alignment.Center
                     ) {
                         Icon(
                             imageVector = if (isPinned) Icons.Filled.PushPin else Icons.Outlined.PushPin,
                             contentDescription = if (isPinned) "Unpin" else "Pin",
-                            modifier = Modifier.size(24.dp),
+                            modifier = Modifier.size(16.dp),
                             tint = if (isPinned) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant
                         )
                     }
                     Box(
                         modifier = Modifier
-                            .size(48.dp)
+                            .size(36.dp)
                             .clip(CircleShape)
                             .clickable(onClick = onToggleCollapse),
                         contentAlignment = Alignment.Center
@@ -190,7 +194,7 @@ fun BusStopCard(
                         Icon(
                             imageVector = if (isCollapsed) Icons.Default.ExpandMore else Icons.Default.ExpandLess,
                             contentDescription = if (isCollapsed) "Expand" else "Collapse",
-                            modifier = Modifier.size(24.dp)
+                            modifier = Modifier.size(20.dp)
                         )
                     }
                 }
@@ -403,16 +407,39 @@ fun BusServiceRow(service: BusService, isPinned: Boolean = false, onTogglePinSer
                 OperatorBadge(operator = service.operator)
                 if (service.next?.feature == "WAB") {
                     Spacer(modifier = Modifier.width(8.dp))
-                    IconButton(
-                        onClick = { showWabInfo = !showWabInfo },
-                        modifier = Modifier.size(20.dp)
-                    ) {
-                        Icon(
-                            imageVector = Icons.Outlined.Accessibility,
-                            contentDescription = "Wheelchair info",
-                            modifier = Modifier.size(18.dp),
-                            tint = MaterialTheme.colorScheme.primary
-                        )
+                    Box {
+                        IconButton(
+                            onClick = { showWabInfo = !showWabInfo },
+                            modifier = Modifier.size(20.dp)
+                        ) {
+                            Icon(
+                                imageVector = Icons.Outlined.Accessibility,
+                                contentDescription = "Wheelchair info",
+                                modifier = Modifier.size(18.dp),
+                                tint = MaterialTheme.colorScheme.primary
+                            )
+                        }
+                        if (showWabInfo) {
+                            Popup(
+                                alignment = Alignment.CenterEnd,
+                                onDismissRequest = { showWabInfo = false },
+                                offset = IntOffset(8, 0)
+                            ) {
+                                Surface(
+                                    shape = RoundedCornerShape(8.dp),
+                                    color = MaterialTheme.colorScheme.inverseSurface,
+                                    shadowElevation = 4.dp
+                                ) {
+                                    Text(
+                                        text = "Wheelchair accessible bus",
+                                        modifier = Modifier.padding(horizontal = 10.dp, vertical = 6.dp),
+                                        style = MaterialTheme.typography.labelSmall,
+                                        color = MaterialTheme.colorScheme.inverseOnSurface,
+                                        fontWeight = FontWeight.Medium
+                                    )
+                                }
+                            }
+                        }
                     }
                 }
             }
@@ -435,7 +462,8 @@ fun BusServiceRow(service: BusService, isPinned: Boolean = false, onTogglePinSer
                     Text(
                         text = arrival.busType,
                         style = MaterialTheme.typography.bodySmall,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        maxLines = 1
                     )
                 }
                 // Load row
@@ -456,20 +484,12 @@ fun BusServiceRow(service: BusService, isPinned: Boolean = false, onTogglePinSer
                     Text(
                         text = arrival.load,
                         style = MaterialTheme.typography.bodySmall,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        maxLines = 1
                     )
                 }
             }
 
-            if (showWabInfo) {
-                Spacer(modifier = Modifier.height(4.dp))
-                Text(
-                    text = "Wheelchair accessible bus",
-                    style = MaterialTheme.typography.labelSmall,
-                    color = MaterialTheme.colorScheme.primary,
-                    fontWeight = FontWeight.Medium
-                )
-            }
         }
 
         Column(

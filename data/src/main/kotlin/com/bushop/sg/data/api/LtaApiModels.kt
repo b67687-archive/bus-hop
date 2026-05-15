@@ -70,7 +70,7 @@ fun parseLtaEstimatedArrival(isoString: String): Pair<String, Long> {
         val now = Date()
         val diffMs = arrivalTime.time - now.time
         val clampedMs = maxOf(0L, diffMs)
-        val timeText = if (clampedMs < 60_000) "Arr" else "${clampedMs / 60_000} min"
+        val timeText = if (clampedMs < 60_000) "Arr." else "${clampedMs / 60_000} min"
         Pair(timeText, clampedMs)
     } catch (e: Exception) {
         Pair("", 0L)

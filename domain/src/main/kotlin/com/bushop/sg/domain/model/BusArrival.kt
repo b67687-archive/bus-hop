@@ -29,7 +29,7 @@ data class BusInfo(
 
 fun BusInfo.toDisplayArrival(): DisplayArrival {
     val durationMinutes = durationMs / 60000
-    val etaText = if (durationMinutes < 1) "Arr" else "$durationMinutes min"
+    val etaText = if (durationMinutes < 1) "Arr." else "$durationMinutes min"
     return DisplayArrival(
         eta = etaText,
         load = when (load) {
