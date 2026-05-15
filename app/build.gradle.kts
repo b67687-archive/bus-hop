@@ -120,3 +120,8 @@ dependencies {
     testImplementation(libs.coroutines.test)
     testImplementation(libs.mockk)
 }
+
+// ── Auto-run APK verification after every assembleDebug ──
+afterEvaluate {
+    tasks.named("assembleDebug") { finalizedBy("checkAndRenameDebugApk") }
+}
