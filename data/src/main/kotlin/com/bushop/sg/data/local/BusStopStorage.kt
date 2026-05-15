@@ -187,10 +187,10 @@ class BusStopStorage(private val context: Context) {
 
     val colorSchemeFlow: Flow<ColorSchemeOption> = context.dataStore.data
         .map { prefs ->
-            val raw = prefs[stringPreferencesKey("color_scheme")] ?: "dynamic"
+            val raw = prefs[stringPreferencesKey("color_scheme")] ?: "blue"
             when (raw) {
-                "blue" -> ColorSchemeOption.BLUE
-                else -> ColorSchemeOption.DYNAMIC
+                "dynamic" -> ColorSchemeOption.DYNAMIC
+                else -> ColorSchemeOption.BLUE
             }
         }
         .distinctUntilChanged()

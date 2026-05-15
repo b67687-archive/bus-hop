@@ -9,6 +9,7 @@ import androidx.compose.animation.fadeOut
 import androidx.compose.animation.shrinkVertically
 import androidx.compose.animation.expandVertically
 import androidx.compose.foundation.BorderStroke
+import androidx.compose.foundation.border
 import androidx.compose.foundation.background
 import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.clickable
@@ -131,7 +132,10 @@ fun BusStopCard(
                             modifier = Modifier
                                 .widthIn(max = 150.dp)
                                 .clip(RoundedCornerShape(10.dp))
-                                .background(MaterialTheme.colorScheme.primaryContainer)
+                                .background(
+                                    if (isPinned) MaterialTheme.colorScheme.surface
+                                    else MaterialTheme.colorScheme.primaryContainer
+                                )
                                 .padding(horizontal = 14.dp, vertical = 8.dp)
                         ) {
                             Text(
@@ -173,22 +177,20 @@ fun BusStopCard(
                             strokeWidth = 2.dp
                         )
                     }
-                    Box(
-                        modifier = Modifier
-                            .size(28.dp)
-                            .clickable(onClick = onTogglePin),
-                        contentAlignment = Alignment.Center
+                    IconButton(
+                        onClick = onTogglePin,
+                        modifier = Modifier.size(20.dp)
                     ) {
                         Icon(
                             imageVector = if (isPinned) Icons.Filled.PushPin else Icons.Outlined.PushPin,
                             contentDescription = if (isPinned) "Unpin" else "Pin",
-                            modifier = Modifier.size(16.dp),
+                            modifier = Modifier.size(12.dp),
                             tint = if (isPinned) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant
                         )
                     }
                     Box(
                         modifier = Modifier
-                            .size(36.dp)
+                            .size(32.dp)
                             .clip(CircleShape)
                             .clickable(onClick = onToggleCollapse),
                         contentAlignment = Alignment.Center
@@ -196,7 +198,7 @@ fun BusStopCard(
                         Icon(
                             imageVector = if (isCollapsed) Icons.Default.ExpandMore else Icons.Default.ExpandLess,
                             contentDescription = if (isCollapsed) "Expand" else "Collapse",
-                            modifier = Modifier.size(20.dp)
+                            modifier = Modifier.size(18.dp)
                         )
                     }
                 }
@@ -363,7 +365,14 @@ fun BusServiceRow(service: BusService, isPinned: Boolean = false, onTogglePinSer
         modifier = Modifier
             .fillMaxWidth()
             .clip(RoundedCornerShape(12.dp))
-            .background(MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.4f))
+            .background(
+                if (isPinned) MaterialTheme.colorScheme.primaryContainer
+                else MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.4f)
+            )
+            .then(
+                if (isPinned) Modifier.border(1.5.dp, MaterialTheme.colorScheme.primary, RoundedCornerShape(12.dp))
+                else Modifier
+            )
             .then(
                 if (onTogglePinService != null) {
                     Modifier.combinedClickable(
@@ -501,18 +510,23 @@ fun BusServiceRow(service: BusService, isPinned: Boolean = false, onTogglePinSer
         ) {
             // First timing — always show
             val nextArrival = service.next?.toDisplayArrival()
+            val isArriving = nextArrival?.eta == "Arr." || nextArrival?.eta == "Arr"
             Box(
                 modifier = Modifier
                     .widthIn(min = 56.dp)
                     .clip(RoundedCornerShape(8.dp))
-                    .background(MaterialTheme.colorScheme.primaryContainer)
+                    .background(
+                        if (isArriving) Color(0xFF34C759)
+                        else MaterialTheme.colorScheme.primaryContainer
+                    )
                     .padding(horizontal = 12.dp, vertical = 2.dp)
             ) {
                 Text(
                     text = nextArrival?.eta ?: "--",
                     style = MaterialTheme.typography.titleLarge,
                     fontWeight = FontWeight.Bold,
-                    color = MaterialTheme.colorScheme.onPrimaryContainer,
+                    color = if (isArriving) Color.White
+                            else MaterialTheme.colorScheme.onPrimaryContainer,
                     textAlign = TextAlign.Center
                 )
             }

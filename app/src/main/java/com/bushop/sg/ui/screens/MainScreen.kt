@@ -384,7 +384,7 @@ fun MainScreen(viewModel: MainViewModel) {
                 targetValue = if (viewModel.isRefreshing)
                     MaterialTheme.colorScheme.primary.copy(alpha = 0.25f)
                 else
-                    MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.7f),
+                    MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.8f),
                 animationSpec = tween(durationMillis = 300)
             )
             Box(
