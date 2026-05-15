@@ -55,7 +55,7 @@ val DarkColorScheme = darkColorScheme(
 @Composable
 fun BusHopTheme(
     darkTheme: Boolean = isSystemInDarkTheme(),
-    colorSchemeOption: ColorSchemeOption = ColorSchemeOption.DYNAMIC,
+    colorSchemeOption: ColorSchemeOption = ColorSchemeOption.BLUE,
     content: @Composable () -> Unit
 ) {
     val context = LocalContext.current

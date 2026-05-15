@@ -112,7 +112,7 @@ class MainViewModel(
 
     // ── Color scheme ──
 
-    private val _colorSchemeOptionFlow = MutableStateFlow(ColorSchemeOption.DYNAMIC)
+    private val _colorSchemeOptionFlow = MutableStateFlow(ColorSchemeOption.BLUE)
     val colorSchemeOptionFlow: StateFlow<ColorSchemeOption> = _colorSchemeOptionFlow.asStateFlow()
 
     fun setColorScheme(option: ColorSchemeOption) {
