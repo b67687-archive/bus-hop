@@ -11,7 +11,6 @@ import com.bushop.sg.data.local.BusStopIndex
 import com.bushop.sg.domain.model.DuplicateStopException
 import com.bushop.sg.domain.model.BusStop
 import com.bushop.sg.domain.model.BusStopWithArrivals
-import com.bushop.sg.domain.model.ColorSchemeOption
 import com.bushop.sg.domain.model.NetworkResult
 import com.bushop.sg.domain.model.ThemeMode
 import com.bushop.sg.domain.repository.BusRepository
@@ -110,28 +109,11 @@ class MainViewModel(
 
     private var additionOrder: List<String> = emptyList()
 
-    // ── Color scheme ──
-
-    private val _colorSchemeOptionFlow = MutableStateFlow(ColorSchemeOption.BLUE)
-    val colorSchemeOptionFlow: StateFlow<ColorSchemeOption> = _colorSchemeOptionFlow.asStateFlow()
-
-    fun setColorScheme(option: ColorSchemeOption) {
-        _colorSchemeOptionFlow.value = option
-        viewModelScope.launch {
-            repository.setColorScheme(option)
-        }
-    }
-
     init {
         // Restore persisted preferences
         viewModelScope.launch {
             repository.themeModeFlow.collect { mode ->
                 _themeModeFlow.value = mode
-            }
-        }
-        viewModelScope.launch {
-            repository.colorSchemeFlow.collect { option ->
-                _colorSchemeOptionFlow.value = option
             }
         }
         viewModelScope.launch {
