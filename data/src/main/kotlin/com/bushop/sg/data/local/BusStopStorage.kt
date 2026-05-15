@@ -9,7 +9,6 @@ import androidx.datastore.preferences.core.stringPreferencesKey
 import androidx.datastore.preferences.preferencesDataStore
 import com.bushop.sg.domain.model.BusService
 import com.bushop.sg.domain.model.BusStop
-import com.bushop.sg.domain.model.ColorSchemeOption
 import com.bushop.sg.domain.model.DuplicateStopException
 import com.bushop.sg.domain.model.ThemeMode
 import com.google.gson.Gson
@@ -181,32 +180,6 @@ class BusStopStorage(private val context: Context) {
             }
             prefs[stringPreferencesKey("theme_mode_str")] = raw
         }
-    }
-
-    // ── Color scheme ──
-
-    val colorSchemeFlow: Flow<ColorSchemeOption> = context.dataStore.data
-        .map { prefs ->
-            val raw = prefs[stringPreferencesKey("color_scheme")] ?: "blue"
-            when (raw) {
-                "dynamic" -> ColorSchemeOption.DYNAMIC
-                else -> ColorSchemeOption.BLUE
-            }
-        }
-        .distinctUntilChanged()
-
-    suspend fun saveColorScheme(option: ColorSchemeOption) {
-        context.dataStore.edit { prefs ->
-            val raw = when (option) {
-                ColorSchemeOption.DYNAMIC -> "dynamic"
-                ColorSchemeOption.BLUE -> "blue"
-            }
-            prefs[stringPreferencesKey("color_scheme")] = raw
-        }
-    }
-
-    suspend fun getColorSchemeOnce(): ColorSchemeOption {
-        return colorSchemeFlow.first()
     }
 
     // ── Collapsed stops (type-safe Set) ──

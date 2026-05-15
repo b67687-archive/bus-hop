@@ -6,7 +6,6 @@ import com.bushop.sg.data.local.BusStopStorage
 import com.bushop.sg.domain.api.BusArrivalDataSource
 import com.bushop.sg.domain.model.BusService
 import com.bushop.sg.domain.model.BusStop
-import com.bushop.sg.domain.model.ColorSchemeOption
 import com.bushop.sg.domain.model.NetworkResult
 import com.bushop.sg.domain.model.ThemeMode
 import com.bushop.sg.domain.model.toNetworkResult
@@ -35,13 +34,8 @@ class BusRepositoryImpl(
     override val isIndexReady: StateFlow<Boolean> = busStopIndex.isReady
 
     override val autoRefreshInterval: Flow<Int> = storage.autoRefreshInterval
-    override val colorSchemeFlow: Flow<ColorSchemeOption> = storage.colorSchemeFlow
 
     override suspend fun getAutoRefreshIntervalOnce(): Int = storage.getAutoRefreshIntervalOnce()
-    override suspend fun setColorScheme(option: ColorSchemeOption) {
-        storage.saveColorScheme(option)
-    }
-    override suspend fun getColorSchemeOnce(): ColorSchemeOption = storage.getColorSchemeOnce()
 
     override suspend fun setAutoRefreshInterval(seconds: Int) {
         storage.saveAutoRefreshInterval(seconds)

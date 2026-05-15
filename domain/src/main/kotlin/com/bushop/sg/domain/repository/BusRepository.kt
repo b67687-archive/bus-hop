@@ -2,7 +2,6 @@ package com.bushop.sg.domain.repository
 
 import com.bushop.sg.domain.model.BusService
 import com.bushop.sg.domain.model.BusStop
-import com.bushop.sg.domain.model.ColorSchemeOption
 import com.bushop.sg.domain.model.NetworkResult
 import com.bushop.sg.domain.model.ThemeMode
 import kotlinx.coroutines.flow.Flow
@@ -17,11 +16,8 @@ interface BusRepository {
     val collapsedStopsFlow: Flow<Set<String>>
     val isIndexReady: StateFlow<Boolean>
     val autoRefreshInterval: Flow<Int>
-    val colorSchemeFlow: Flow<ColorSchemeOption>
 
     suspend fun getAutoRefreshIntervalOnce(): Int
-    suspend fun setColorScheme(option: ColorSchemeOption)
-    suspend fun getColorSchemeOnce(): ColorSchemeOption
     suspend fun setAutoRefreshInterval(seconds: Int)
     suspend fun setThemeMode(mode: ThemeMode)
     suspend fun setCollapsedStops(stops: Set<String>)

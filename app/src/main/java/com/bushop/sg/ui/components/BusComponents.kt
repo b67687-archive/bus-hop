@@ -63,6 +63,7 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.window.Popup
@@ -280,6 +281,7 @@ fun BusStopCard(
 private fun CollapsedBusChip(service: BusService) {
     val arrival = service.next?.toDisplayArrival()
     val eta = arrival?.eta ?: "--"
+    val isArriving = eta == "Arr." || eta == "Arr"
 
     Box(
         modifier = Modifier
@@ -297,14 +299,14 @@ private fun CollapsedBusChip(service: BusService) {
             Box(
                 modifier = Modifier
                     .clip(RoundedCornerShape(8.dp))
-                    .background(MaterialTheme.colorScheme.primary)
+                    .background(if (isArriving) Color(0xFF34C759) else MaterialTheme.colorScheme.primary)
                     .padding(horizontal = 8.dp, vertical = 5.dp)
             ) {
                 Text(
                     text = eta,
                     style = MaterialTheme.typography.labelSmall,
                     fontWeight = FontWeight.Bold,
-                    color = MaterialTheme.colorScheme.onPrimary
+                    color = Color.White
                 )
             }
         }
@@ -386,15 +388,6 @@ fun BusServiceRow(service: BusService, isPinned: Boolean = false, onTogglePinSer
             .padding(12.dp),
         verticalAlignment = Alignment.CenterVertically
     ) {
-        if (isPinned) {
-            Icon(
-                imageVector = Icons.Filled.PushPin,
-                contentDescription = "Pinned service",
-                modifier = Modifier.size(16.dp),
-                tint = MaterialTheme.colorScheme.primary
-            )
-            Spacer(modifier = Modifier.width(4.dp))
-        }
         Box(
             modifier = Modifier
                 .size(width = 56.dp, height = 44.dp)
@@ -437,7 +430,8 @@ fun BusServiceRow(service: BusService, isPinned: Boolean = false, onTogglePinSer
                             }
                             Popup(
                                 alignment = Alignment.TopCenter,
-                                onDismissRequest = { showWabInfo = false }
+                                onDismissRequest = { showWabInfo = false },
+                                offset = IntOffset(0, -8)
                             ) {
                                 Surface(
                                     shape = RoundedCornerShape(8.dp),
