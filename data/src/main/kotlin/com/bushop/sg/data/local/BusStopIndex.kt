@@ -80,26 +80,23 @@ class BusStopIndex(private val context: Context) {
         val q = query.trim().lowercase()
         if (q.length < 1 || stops.isEmpty()) return emptyList()
 
-        // Fast path: pure digit queries — code prefix matches first, then substring
-        if (q.all { it.isDigit() }) {
-            val prefix = stops.values.filter { it.code.startsWith(q) }
-            val rest = stops.values.filter { !it.code.startsWith(q) && it.code.contains(q) }
-            return (prefix + rest).take(20)
-        }
-
         data class Scored(val entry: BusStopEntry, val score: Int)
-        val queryTokens = q.split(Regex("""\s+""")).filter { it.length >= 2 }
+
+        // Always search names; codes get a small bonus for backtracking
+        val queryTokens = q.split(Regex("""\s+""")).filter { it.isNotEmpty() }
 
         val results = stops.values.mapNotNull { entry ->
+            val nameLower = entry.name.lowercase()
             val nameTokens = tokenise(entry.name)
             val roadTokens = tokenise(entry.road)
+            val codeLower = entry.code.lowercase()
             var score = 0
             var matchedAny = false
 
             for (qt in queryTokens) {
                 var best = 0
 
-                // Check name tokens
+                // ── Name matching (primary) ──
                 for (nt in nameTokens) {
                     val s = when {
                         nt == qt -> 1000
@@ -107,20 +104,28 @@ class BusStopIndex(private val context: Context) {
                         qt.startsWith(nt) -> 600
                         nt.contains(qt) -> 400
                         qt.contains(nt) -> 300
-                        qt.length >= 4 && levenshtein(nt, qt) <= 1 -> 200
+                        qt.length >= 3 && levenshtein(nt, qt) <= 1 -> 250
                         else -> 0
                     }
                     if (s > best) best = s
                 }
 
-                // Check road tokens (lower weight)
-                for (rt in roadTokens) {
-                    val s = when {
-                        rt.startsWith(qt) -> 300
-                        rt.contains(qt) -> 150
-                        else -> 0
+                // ── Road matching (secondary — always lower than name) ──
+                if (best == 0) {
+                    for (rt in roadTokens) {
+                        val s = when {
+                            rt.startsWith(qt) -> 180
+                            rt.contains(qt) -> 80
+                            else -> 0
+                        }
+                        if (s > best) best = s
                     }
-                    if (s > best) best = s
+                }
+
+                // ── Code match (tiny bonus, never primary) ──
+                if (best == 0 && qt.length >= 2) {
+                    if (codeLower.startsWith(qt)) best = 40
+                    else if (codeLower.contains(qt)) best = 15
                 }
 
                 if (best > 0) {
@@ -129,11 +134,12 @@ class BusStopIndex(private val context: Context) {
                 }
             }
 
-            // Bonus: all tokens matched
-            val allMatched = queryTokens.all { qt ->
-                nameTokens.any { nt -> nt.startsWith(qt) || nt.contains(qt) || qt.contains(nt) }
+            // Bonus: all tokens matched in name
+            if (queryTokens.isNotEmpty() && queryTokens.all { qt ->
+                    nameTokens.any { nt -> nt.startsWith(qt) || nt.contains(qt) || qt.contains(nt) }
+                }) {
+                score += 500
             }
-            if (allMatched && queryTokens.isNotEmpty()) score += 500
 
             if (matchedAny) Scored(entry, score) else null
         }
