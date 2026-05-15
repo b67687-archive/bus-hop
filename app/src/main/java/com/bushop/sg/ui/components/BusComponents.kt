@@ -133,7 +133,6 @@ fun BusStopCard(
                         }
                         Box(
                             modifier = Modifier
-                                .widthIn(max = 150.dp)
                                 .clip(RoundedCornerShape(10.dp))
                                 .background(
                                     if (isPinned) MaterialTheme.colorScheme.surface
@@ -363,8 +362,6 @@ private fun ErrorBanner(message: String, onRetry: () -> Unit) {
 @Composable
 @OptIn(ExperimentalFoundationApi::class)
 fun BusServiceRow(service: BusService, isPinned: Boolean = false, onTogglePinService: (() -> Unit)? = null) {
-    var showWabInfo by remember { mutableStateOf(false) }
-
     Row(
         modifier = Modifier
             .fillMaxWidth()
@@ -413,46 +410,12 @@ fun BusServiceRow(service: BusService, isPinned: Boolean = false, onTogglePinSer
                 OperatorBadge(operator = service.operator)
                 if (service.next?.feature == "WAB") {
                     Spacer(modifier = Modifier.width(8.dp))
-                    Box {
-                        IconButton(
-                            onClick = { showWabInfo = !showWabInfo },
-                            modifier = Modifier.size(20.dp)
-                        ) {
-                            Icon(
-                                imageVector = Icons.Outlined.Accessibility,
-                                contentDescription = "Wheelchair info",
-                                modifier = Modifier.size(18.dp),
-                                tint = MaterialTheme.colorScheme.primary
-                            )
-                        }
-                        if (showWabInfo) {
-                            LaunchedEffect(Unit) {
-                                kotlinx.coroutines.delay(3000)
-                                showWabInfo = false
-                            }
-                            val density = LocalDensity.current
-                            val popupOffsetPx = with(density) { 28.dp.roundToPx() }
-                            Popup(
-                                alignment = Alignment.TopCenter,
-                                onDismissRequest = { showWabInfo = false },
-                                offset = IntOffset(0, -popupOffsetPx)
-                            ) {
-                                Surface(
-                                    shape = RoundedCornerShape(8.dp),
-                                    color = MaterialTheme.colorScheme.inverseSurface,
-                                    shadowElevation = 4.dp
-                                ) {
-                                    Text(
-                                        text = "Wheelchair accessible bus",
-                                        modifier = Modifier.padding(horizontal = 10.dp, vertical = 6.dp),
-                                        style = MaterialTheme.typography.labelSmall,
-                                        color = MaterialTheme.colorScheme.inverseOnSurface,
-                                        fontWeight = FontWeight.Medium
-                                    )
-                                }
-                            }
-                        }
-                    }
+                    Icon(
+                        imageVector = Icons.Outlined.Accessibility,
+                        contentDescription = "Wheelchair accessible bus",
+                        modifier = Modifier.size(16.dp),
+                        tint = MaterialTheme.colorScheme.primary
+                    )
                 }
             }
 
@@ -515,7 +478,7 @@ fun BusServiceRow(service: BusService, isPinned: Boolean = false, onTogglePinSer
             val isArriving = nextArrival?.eta == "Arr." || nextArrival?.eta == "Arr"
             Box(
                 modifier = Modifier
-                    .widthIn(max = 72.dp)
+                    .widthIn(max = 88.dp)
                     .clip(RoundedCornerShape(8.dp))
                     .background(
                         if (isArriving) Color(0xFF34C759)
@@ -529,7 +492,9 @@ fun BusServiceRow(service: BusService, isPinned: Boolean = false, onTogglePinSer
                     fontWeight = FontWeight.Bold,
                     color = if (isArriving) Color.White
                             else MaterialTheme.colorScheme.onPrimaryContainer,
-                    textAlign = TextAlign.Center
+                    textAlign = TextAlign.Center,
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis
                 )
             }
             // Second timing — always show

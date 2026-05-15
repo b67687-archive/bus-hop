@@ -19,6 +19,7 @@ import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
+import androidx.compose.material.icons.outlined.Accessibility
 import androidx.compose.material.icons.filled.BrightnessAuto
 import androidx.compose.material.icons.filled.Check
 import androidx.compose.material.icons.filled.Close
@@ -65,9 +66,11 @@ import androidx.compose.ui.Modifier
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.fillMaxHeight
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.ui.input.nestedscroll.nestedScroll
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import com.bushop.sg.data.local.BusStopEntry
@@ -385,24 +388,63 @@ fun MainScreen(viewModel: MainViewModel) {
                     MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.8f),
                 animationSpec = tween(durationMillis = 300)
             )
-            Box(
+            Row(
                 modifier = Modifier
                     .align(Alignment.BottomStart)
-                    .padding(start = 16.dp, bottom = 16.dp)
-                    .clip(RoundedCornerShape(8.dp))
-                    .background(pillBg)
-                    .padding(horizontal = 10.dp, vertical = 6.dp)
+                    .padding(start = 16.dp, bottom = 16.dp),
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(6.dp)
             ) {
-                Text(
-                    text = buildString {
-                        append("Updated: ${formatLastUpdated(viewModel.lastUpdatedAll)}")
-                        if (savedStops.any { it.isStale }) {
-                            append("  •  Some data may be stale")
-                        }
-                    },
-                    style = MaterialTheme.typography.labelSmall,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant
-                )
+                Box(
+                    modifier = Modifier
+                        .clip(RoundedCornerShape(8.dp))
+                        .background(pillBg)
+                        .padding(horizontal = 10.dp, vertical = 6.dp)
+                ) {
+                    Text(
+                        text = buildString {
+                            append("Updated: ${formatLastUpdated(viewModel.lastUpdatedAll)}")
+                            if (savedStops.any { it.isStale }) {
+                                append("  •  Some data may be stale")
+                            }
+                        },
+                        style = MaterialTheme.typography.labelSmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                }
+                // Legend / info button
+                var showLegend by remember { mutableStateOf(false) }
+                Box(
+                    modifier = Modifier
+                        .size(22.dp)
+                        .clip(CircleShape)
+                        .background(MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.8f))
+                        .clickable { showLegend = true },
+                    contentAlignment = Alignment.Center
+                ) {
+                    Text(
+                        text = "i",
+                        style = MaterialTheme.typography.labelSmall,
+                        fontWeight = FontWeight.Bold,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                }
+                if (showLegend) {
+                    AlertDialog(
+                        onDismissRequest = { showLegend = false },
+                        title = { Text("Icon Legend") },
+                        text = {
+                            Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
+                                Row(verticalAlignment = Alignment.CenterVertically) {
+                                    Icon(Icons.Outlined.Accessibility, contentDescription = null, modifier = Modifier.size(20.dp), tint = MaterialTheme.colorScheme.primary)
+                                    Spacer(Modifier.width(8.dp))
+                                    Text("Wheelchair accessible bus", style = MaterialTheme.typography.bodyMedium)
+                                }
+                            }
+                        },
+                        confirmButton = { TextButton(onClick = { showLegend = false }) { Text("OK") } }
+                    )
+                }
             }
         }
         }  // close outer Box
