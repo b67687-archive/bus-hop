@@ -80,7 +80,7 @@ tasks.register("checkAndRenameDebugApk") {
             )
         }
 
-        val targetName = "app-debug-bus-hop.apk"
+        val targetName = "bus-hop.apk"
         if (apk.name != targetName) {
             val renamed = File(apkDir, targetName)
             apk.renameTo(renamed)
