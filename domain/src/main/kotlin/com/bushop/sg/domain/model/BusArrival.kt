@@ -1,30 +1,28 @@
 package com.bushop.sg.domain.model
 
-import com.google.gson.annotations.SerializedName
-
 data class BusArrivalResponse(
-    @SerializedName("services") val services: List<BusService>?
+    val services: List<BusService>?
 )
 
 data class BusService(
-    @SerializedName("no") val serviceNo: String,
-    @SerializedName("operator") val operator: String,
-    @SerializedName("next") val next: BusInfo?,
-    @SerializedName("subsequent") val subsequent: BusInfo?,
-    @SerializedName("next3") val next3: BusInfo?
+    val serviceNo: String,
+    val operator: String,
+    val next: BusInfo?,
+    val subsequent: BusInfo?,
+    val next3: BusInfo?
 )
 
 data class BusInfo(
-    @SerializedName("time") val time: String,
-    @SerializedName("duration_ms") val durationMs: Long,
-    @SerializedName("lat") val lat: Double?,
-    @SerializedName("lng") val lng: Double?,
-    @SerializedName("load") val load: String,
-    @SerializedName("feature") val feature: String?,
-    @SerializedName("type") val type: String,
-    @SerializedName("visit_number") val visitNumber: Int,
-    @SerializedName("origin_code") val originCode: String?,
-    @SerializedName("destination_code") val destinationCode: String?
+    val time: String,
+    val durationMs: Long,
+    val lat: Double?,
+    val lng: Double?,
+    val load: String,
+    val feature: String?,
+    val type: String,
+    val visitNumber: Int,
+    val originCode: String?,
+    val destinationCode: String?
 )
 
 fun BusInfo.toDisplayArrival(): DisplayArrival {

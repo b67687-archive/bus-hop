@@ -1,0 +1,16 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<lint>
+    <!-- Ignore missing translations — single-language app -->
+    <issue id="MissingTranslation" severity="ignore" />
+    <issue id="ExtraTranslation" severity="ignore" />
+
+    <!-- Ignore Kotlin-specific warnings that are intentional -->
+    <issue id="SyntheticAccessor" severity="ignore" />
+
+    <!-- AGP version check: not upgrading yet (requires Kotlin/Compose bumps) -->
+    <issue id="AndroidGradlePluginVersion" severity="warning" />
+
+    <!-- Enforce common quality rules -->
+    <issue id="ObsoleteSdkInt" severity="warning" />
+    <issue id="IconExpectedSize" severity="ignore" />
+</lint>

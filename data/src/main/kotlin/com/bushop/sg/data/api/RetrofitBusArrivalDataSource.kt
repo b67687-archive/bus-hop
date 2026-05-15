@@ -8,5 +8,5 @@ class RetrofitBusArrivalDataSource(
     private val api: ArrivelahApi = ApiClient.api
 ) : BusArrivalDataSource {
     override suspend fun getBusArrivals(busStopCode: String): BusArrivalResponse =
-        api.getBusArrivals(busStopCode)
+        api.getBusArrivals(busStopCode).toDomain()
 }
