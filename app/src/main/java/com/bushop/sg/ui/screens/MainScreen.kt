@@ -15,7 +15,9 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.gestures.awaitEachGesture
 import androidx.compose.foundation.lazy.items
+import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
@@ -351,7 +353,17 @@ fun MainScreen(viewModel: MainViewModel) {
                         ) {
                             LazyColumn(
                                 state = listState,
-                                modifier = Modifier.fillMaxSize(),
+                                modifier = Modifier
+                                    .fillMaxSize()
+                                    .then(
+                                        if (draggedCode != null) {
+                                            Modifier.pointerInput(draggedCode) {
+                                                awaitEachGesture {
+                                                    do {} while (true)
+                                                }
+                                            }
+                                        } else Modifier
+                                    ),
                                 contentPadding = PaddingValues(
                                     start = 16.dp, end = 16.dp, top = 16.dp, bottom = 40.dp
                                 ),
