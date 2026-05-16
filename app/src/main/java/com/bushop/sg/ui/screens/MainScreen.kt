@@ -15,9 +15,7 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.lazy.LazyColumn
-import androidx.compose.foundation.gestures.awaitEachGesture
 import androidx.compose.foundation.lazy.items
-import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
@@ -179,7 +177,7 @@ fun MainScreen(viewModel: MainViewModel) {
     val listState = rememberLazyListState()
     var showSettings by remember { mutableStateOf(false) }
     val snackbarHostState = remember { SnackbarHostState() }
-    val scrollBehavior = TopAppBarDefaults.enterAlwaysScrollBehavior()
+    val scrollBehavior = TopAppBarDefaults.pinnedScrollBehavior()
     
     var deleteTarget by remember { mutableStateOf<String?>(null) }
 
@@ -347,23 +345,10 @@ fun MainScreen(viewModel: MainViewModel) {
                             )
                         }
                     } else {
-                        PullToRefreshBox(
-                            isRefreshing = viewModel.isRefreshing,
-                            onRefresh = { viewModel.refreshAll() }
-                        ) {
+                        if (draggedCode != null) {
                             LazyColumn(
                                 state = listState,
-                                modifier = Modifier
-                                    .fillMaxSize()
-                                    .then(
-                                        if (draggedCode != null) {
-                                            Modifier.pointerInput(draggedCode) {
-                                                awaitEachGesture {
-                                                    do {} while (true)
-                                                }
-                                            }
-                                        } else Modifier
-                                    ),
+                                modifier = Modifier.fillMaxSize(),
                                 contentPadding = PaddingValues(
                                     start = 16.dp, end = 16.dp, top = 16.dp, bottom = 40.dp
                                 ),
@@ -403,6 +388,56 @@ fun MainScreen(viewModel: MainViewModel) {
                                             draggedCode = null
                                         }
                                     )
+                                }
+                            }
+                        } else {
+                            PullToRefreshBox(
+                                isRefreshing = viewModel.isRefreshing,
+                                onRefresh = { viewModel.refreshAll() }
+                            ) {
+                                LazyColumn(
+                                    state = listState,
+                                    modifier = Modifier.fillMaxSize(),
+                                    contentPadding = PaddingValues(
+                                        start = 16.dp, end = 16.dp, top = 16.dp, bottom = 40.dp
+                                    ),
+                                    verticalArrangement = Arrangement.spacedBy(12.dp)
+                                ) {
+                                    items(
+                                        items = savedStops,
+                                        key = { it.busStop.code }
+                                    ) { stopWithArrivals ->
+                                        BusStopCard(
+                                            modifier = Modifier.animateItem(),
+                                            stop = stopWithArrivals,
+                                            onRefresh = { viewModel.refreshArrivals(stopWithArrivals.busStop.code) },
+                                            onToggleCollapse = { viewModel.toggleCollapse(stopWithArrivals.busStop.code) },
+                                            onTogglePin = { viewModel.togglePin(stopWithArrivals.busStop.code) },
+                                            onDelete = { deleteTarget = stopWithArrivals.busStop.code },
+                                            onTogglePinService = { serviceNo ->
+                                                viewModel.togglePinService(stopWithArrivals.busStop.code, serviceNo)
+                                            },
+                                            pinnedServiceNos = pinnedServices
+                                                .filter { it.startsWith("${stopWithArrivals.busStop.code}:") }
+                                                .map { it.substringAfter(":") }.toSet(),
+                                            onMoveStop = { delta ->
+                                                viewModel.moveStop(stopWithArrivals.busStop.code, delta)
+                                            },
+                                            onDragStart = { code ->
+                                                draggedCode = code
+                                            },
+                                            onDragEnd = { code, lastTotalY ->
+                                                val deleteThreshold = savedStops.size * dragItemHeightPx + deleteZoneThresholdPx
+                                                if (lastTotalY > deleteThreshold) {
+                                                    viewModel.removeBusStop(code)
+                                                } else if (lastTotalY != 0f) {
+                                                    val delta = (lastTotalY / dragItemHeightPx).toInt()
+                                                    if (delta != 0) viewModel.moveStop(code, delta)
+                                                }
+                                                draggedCode = null
+                                            }
+                                        )
+                                    }
                                 }
                             }
                         }
