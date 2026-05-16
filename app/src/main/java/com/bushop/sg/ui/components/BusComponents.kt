@@ -17,9 +17,8 @@ import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.gestures.awaitEachGesture
 import androidx.compose.foundation.gestures.awaitFirstDown
 import androidx.compose.foundation.gestures.detectTapGestures
-import androidx.compose.ui.input.pointer.PointerEventType
+import androidx.compose.foundation.gestures.drag
 import androidx.compose.foundation.gestures.waitForUpOrCancellation
-import androidx.compose.ui.input.pointer.PointerEventTimeoutCancellationException
 import androidx.compose.material.icons.filled.Chair
 import androidx.compose.material.icons.filled.DirectionsBus
 import androidx.compose.material.icons.filled.DirectionsWalk
@@ -181,22 +180,19 @@ fun BusStopCard(
                                     // Quick tap — went up before long press timeout
                                     onToggleCollapse()
                                 } else {
-                                    // Long press detected
+                                    // Long press detected — start drag
                                     isLocallyDragged = true
                                     localDragOffset = 0f
                                     if (!isCollapsed) collapsedForDrag = true
                                     haptic.performHapticFeedback(HapticFeedbackType.LongPress)
                                     var totalY = 0f
-                                    while (true) {
-                                        val event = awaitPointerEvent()
-                                        val change = event.changes.firstOrNull() ?: break
-                                        change.consume()
-                                        val delta = change.position - change.previousPosition
-                                        totalY += delta.y
+                                    // Use drag() to handle the event loop — exits on pointer up/cancel
+                                    drag(down.id) {
+                                        it.consume()
+                                        val dy = it.position.y - it.previousPosition.y
+                                        totalY += dy
                                         localDragOffset = totalY
-                                        // Report drag position to MainScreen for gap effect
                                         onDragUpdate?.invoke(busStopCode, totalY)
-                                        if (event.type == PointerEventType.Release) break
                                     }
                                     // Drag ended — parent handles both delete and reorder
                                     onDragEnd?.invoke(busStopCode, totalY)

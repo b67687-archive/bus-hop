@@ -50,9 +50,12 @@ import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.material3.TopAppBarDefaults
+import kotlinx.coroutines.delay
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.animateColorAsState
 import androidx.compose.animation.core.tween
+import androidx.compose.animation.expandVertically
+import androidx.compose.animation.shrinkVertically
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
 import androidx.compose.runtime.Composable
@@ -272,7 +275,7 @@ fun MainScreen(viewModel: MainViewModel) {
                         Icon(
                             imageVector = Icons.Default.Refresh,
                             contentDescription = "Refresh",
-                            tint = if (viewModel.isRefreshing) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant
+                            tint = MaterialTheme.colorScheme.primary
                         )
                     }
                     IconButton(onClick = onSettingsClick) {
@@ -407,6 +410,36 @@ fun MainScreen(viewModel: MainViewModel) {
                     }
                 }  // close weight(1f) Box
             }  // close Column
+
+        // ── First-time hint (tap to expand, auto-dismiss 5s, never again) ──
+        val hintVisible = !viewModel.hasSeenDragHint && savedStops.isNotEmpty() && draggedCode == null
+        LaunchedEffect(hintVisible) {
+            if (hintVisible) {
+                delay(5000)
+                viewModel.hasSeenDragHint = true
+            }
+        }
+        AnimatedVisibility(
+            visible = hintVisible,
+            enter = fadeIn() + expandVertically(),
+            exit = fadeOut() + shrinkVertically()
+        ) {
+            Box(
+                modifier = Modifier
+                    .align(Alignment.TopCenter)
+                    .padding(top = 8.dp)
+                    .clickable { viewModel.hasSeenDragHint = true }
+                    .clip(RoundedCornerShape(12.dp))
+                    .background(MaterialTheme.colorScheme.secondaryContainer)
+                    .padding(horizontal = 20.dp, vertical = 10.dp)
+            ) {
+                Text(
+                    text = "Tip: Tap a bus stop to see arrival times",
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = MaterialTheme.colorScheme.onSecondaryContainer
+                )
+            }
+        }
 
         if (viewModel.lastUpdatedAll > 0) {
             val pillBg by animateColorAsState(

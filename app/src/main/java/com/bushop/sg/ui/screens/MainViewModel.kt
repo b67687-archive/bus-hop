@@ -178,7 +178,7 @@ class MainViewModel(
     var isCheckingUpdate by mutableStateOf(false)
         private set
     var isDownloadingUpdate by mutableStateOf(false)
-        private set
+    var hasSeenDragHint by mutableStateOf(false)
     var downloadProgress by mutableStateOf(0f)
         private set
 
@@ -366,6 +366,8 @@ class MainViewModel(
                     addStopIsLoading = false
                     return@launch
                 }
+                // New stops default to collapsed
+                toggleCollapse(formattedCode)
                 addStopIsLoading = false
                 hideAddStopDialog()
             } else {
