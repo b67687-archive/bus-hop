@@ -61,7 +61,10 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.shadow
+import androidx.compose.ui.zIndex
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
@@ -86,7 +89,9 @@ fun BusStopCard(
     onDelete: () -> Unit,
     onTogglePinService: (String) -> Unit,
     pinnedServiceNos: Set<String> = emptySet(),
-    onMoveStop: ((Int) -> Unit)? = null,  // drag-to-reorder: called with delta (-1 up, +1 down)
+    onMoveStop: ((Int) -> Unit)? = null,  // called with delta (-1 up, +1 down)
+    isDragged: Boolean = false,           // visual: card is the one being dragged
+    dragOffset: Float = 0f,               // visual: pixels the card should offset by
     modifier: Modifier = Modifier
 ) {
     val busStopCode = stop.busStop.code
@@ -97,8 +102,22 @@ fun BusStopCard(
     val isOffline = stop.isOffline
     val isCollapsed = stop.isCollapsed
     val isPinned = stop.isPinned
+    val haptic = LocalHapticFeedback.current
+    var localDragOffset by remember { mutableStateOf(0f) }
+    var isLocallyDragged by remember { mutableStateOf(false) }
+    val visuallyDragged = isDragged || isLocallyDragged
+    val effectiveOffset = if (isDragged) dragOffset else localDragOffset
+
     Card(
-        modifier = modifier.fillMaxWidth(),
+        modifier = modifier
+            .fillMaxWidth()
+            .then(
+                if (visuallyDragged) Modifier
+                    .zIndex(1f)
+                    .graphicsLayer { translationY = effectiveOffset }
+                    .shadow(12.dp, RoundedCornerShape(20.dp))
+                else Modifier
+            ),
         shape = RoundedCornerShape(20.dp),
         colors = CardDefaults.cardColors(
             containerColor = if (isPinned)
@@ -107,9 +126,8 @@ fun BusStopCard(
                 MaterialTheme.colorScheme.surface
         ),
         border = if (isPinned) BorderStroke(1.5.dp, MaterialTheme.colorScheme.primary) else null,
-        elevation = CardDefaults.cardElevation(defaultElevation = 3.dp)
+        elevation = CardDefaults.cardElevation(defaultElevation = if (visuallyDragged) 12.dp else 3.dp)
     ) {
-        val haptic = LocalHapticFeedback.current
     Column(modifier = Modifier.padding(horizontal = 16.dp)) {
             Row(
                 modifier = Modifier
@@ -121,7 +139,6 @@ fun BusStopCard(
                                 if (onMoveStop == null) {
                                     onDelete()
                                 }
-                                // If onMoveStop is non-null, long press starts drag-to-reorder
                             }
                         )
                     }
@@ -131,21 +148,30 @@ fun BusStopCard(
                             detectDragGesturesAfterLongPress(
                                 onDragStart = {
                                     totalY = 0f
+                                    isLocallyDragged = true
+                                    localDragOffset = 0f
                                     haptic.performHapticFeedback(HapticFeedbackType.LongPress)
                                 },
                                 onDrag = { change, dragAmount ->
                                     change.consume()
                                     totalY += dragAmount.y
+                                    localDragOffset = totalY
                                     if (totalY < -120) {
-                                        onMoveStop?.invoke(-1)
+                                        onMoveStop!!(-1)
                                         totalY = 0f
                                     } else if (totalY > 120) {
-                                        onMoveStop?.invoke(1)
+                                        onMoveStop!!(1)
                                         totalY = 0f
                                     }
                                 },
-                                onDragEnd = { },
-                                onDragCancel = { }
+                                onDragEnd = {
+                                    isLocallyDragged = false
+                                    localDragOffset = 0f
+                                },
+                                onDragCancel = {
+                                    isLocallyDragged = false
+                                    localDragOffset = 0f
+                                }
                             )
                         } else Modifier
                     )
