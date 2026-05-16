@@ -93,8 +93,6 @@ fun BusStopCard(
     onMoveStop: ((Int) -> Unit)? = null,  // called on drag end (multi-position delta)
     onDragStart: ((code: String) -> Unit)? = null,   // called when drag begins
     onDragEnd: ((code: String, lastTotalY: Float) -> Unit)? = null,  // called when drag ends
-    isDragged: Boolean = false,           // visual: card is being dragged
-    dragOffset: Float = 0f,               // visual: pixels the card should offset by
     modifier: Modifier = Modifier
 ) {
     val busStopCode = stop.busStop.code
@@ -111,8 +109,8 @@ fun BusStopCard(
     var localDragOffset by remember { mutableStateOf(0f) }
     var isLocallyDragged by remember { mutableStateOf(false) }
     var collapsedForDrag by remember { mutableStateOf(false) }
-    val visuallyDragged = isDragged || isLocallyDragged
-    val effectiveOffset = if (isDragged) dragOffset else localDragOffset
+    val visuallyDragged = isLocallyDragged
+    val effectiveOffset = localDragOffset
     val effectiveCollapsed = collapsedForDrag || isCollapsed
 
     Card(
