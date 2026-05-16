@@ -14,8 +14,12 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.combinedClickable
-import androidx.compose.foundation.gestures.detectDragGesturesAfterLongPress
+import androidx.compose.foundation.gestures.awaitEachGesture
+import androidx.compose.foundation.gestures.awaitFirstDown
 import androidx.compose.foundation.gestures.detectTapGestures
+import androidx.compose.ui.input.pointer.PointerEventType
+import androidx.compose.foundation.gestures.waitForUpOrCancellation
+import androidx.compose.ui.input.pointer.PointerEventTimeoutCancellationException
 import androidx.compose.material.icons.filled.Chair
 import androidx.compose.material.icons.filled.DirectionsBus
 import androidx.compose.material.icons.filled.DirectionsWalk
@@ -73,9 +77,11 @@ import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.ui.platform.LocalViewConfiguration
 import androidx.compose.ui.hapticfeedback.HapticFeedbackType
 import androidx.compose.ui.platform.LocalHapticFeedback
 import androidx.compose.ui.window.Popup
+import kotlinx.coroutines.withTimeoutOrNull
 import com.bushop.sg.domain.model.BusService
 import com.bushop.sg.domain.model.BusStopWithArrivals
 import com.bushop.sg.domain.model.toDisplayArrival
@@ -105,6 +111,7 @@ fun BusStopCard(
     val isPinned = stop.isPinned
     val haptic = LocalHapticFeedback.current
     val dragDensity = LocalDensity.current
+    val viewConfiguration = LocalViewConfiguration.current
     var localDragOffset by remember { mutableStateOf(0f) }
     var isLocallyDragged by remember { mutableStateOf(false) }
     var collapsedForDrag by remember { mutableStateOf(false) }
@@ -132,7 +139,7 @@ fun BusStopCard(
     ) {
     Column {
             // ── Header background (pinned = blue pill, unpinned = none) ──
-            val isTapTarget = onMoveStop == null
+            val itemHeightPx = with(dragDensity) { 140.dp.toPx() }
             Row(
                 modifier = (if (isPinned) Modifier
                     .fillMaxWidth()
@@ -140,54 +147,53 @@ fun BusStopCard(
                     .background(MaterialTheme.colorScheme.primaryContainer)
                 else Modifier.fillMaxWidth())
                     .padding(horizontal = 16.dp, vertical = 12.dp)
-                    .pointerInput(onToggleCollapse, onDelete, onMoveStop) {
-                        detectTapGestures(
-                            onTap = { onToggleCollapse() },
-                            onLongPress = {
-                                if (isTapTarget) {
-                                    onDelete()
-                                }
-                            }
-                        )
-                    }
                     .then(
                         if (onMoveStop != null) Modifier.pointerInput(onMoveStop) {
-                            var totalY = 0f
-                            val itemHeightPx = with(dragDensity) { 140.dp.toPx() }
-                            detectDragGesturesAfterLongPress(
-                                onDragStart = {
-                                    totalY = 0f
+                            awaitEachGesture {
+                                val down = awaitFirstDown(requireUnconsumed = false)
+                                val longPressMs = viewConfiguration.longPressTimeoutMillis
+                                val upOrTimeout = withTimeoutOrNull(longPressMs) {
+                                    waitForUpOrCancellation()
+                                }
+                                if (upOrTimeout != null) {
+                                    // Quick tap — went up before long press timeout
+                                    onToggleCollapse()
+                                } else {
+                                    // Long press detected
                                     isLocallyDragged = true
                                     localDragOffset = 0f
                                     if (!isCollapsed) collapsedForDrag = true
                                     haptic.performHapticFeedback(HapticFeedbackType.LongPress)
-                                },
-                                onDrag = { change, dragAmount ->
-                                    change.consume()
-                                    totalY += dragAmount.y
-                                    localDragOffset = totalY
-                                    // Mid-gesture swap at each card boundary
-                                    while (kotlin.math.abs(totalY) >= itemHeightPx) {
-                                        val dir = if (totalY > 0) 1 else -1
-                                        onMoveStop!!(dir)
-                                        totalY -= dir * itemHeightPx
+                                    var totalY = 0f
+                                    while (true) {
+                                        val event = awaitPointerEvent()
+                                        val change = event.changes.firstOrNull() ?: break
+                                        change.consume()
+                                        val delta = change.position - change.previousPosition
+                                        totalY += delta.y
                                         localDragOffset = totalY
+                                        while (kotlin.math.abs(totalY) >= itemHeightPx) {
+                                            val dir = if (totalY > 0) 1 else -1
+                                            onMoveStop!!(dir)
+                                            totalY -= dir * itemHeightPx
+                                            localDragOffset = totalY
+                                        }
+                                        if (event.type == PointerEventType.Release) break
                                     }
-                                },
-                                onDragEnd = {
+                                    // Drag ended
                                     isLocallyDragged = false
                                     localDragOffset = 0f
                                     collapsedForDrag = false
                                     val delta = (totalY / itemHeightPx).toInt()
                                     if (delta != 0) onMoveStop!!(delta)
-                                },
-                                onDragCancel = {
-                                    isLocallyDragged = false
-                                    localDragOffset = 0f
-                                    collapsedForDrag = false
                                 }
+                            }
+                        } else Modifier.pointerInput(onToggleCollapse, onDelete) {
+                            detectTapGestures(
+                                onTap = { onToggleCollapse() },
+                                onLongPress = { onDelete() }
                             )
-                        } else Modifier
+                        }
                     ),
                 horizontalArrangement = Arrangement.SpaceBetween,
                 verticalAlignment = Alignment.CenterVertically
