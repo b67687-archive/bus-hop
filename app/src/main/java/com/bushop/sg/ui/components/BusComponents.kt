@@ -127,6 +127,7 @@ fun BusStopCard(
         elevation = CardDefaults.cardElevation(defaultElevation = if (visuallyDragged) 12.dp else 3.dp)
     ) {
     Column(modifier = Modifier.padding(horizontal = 16.dp)) {
+            // Blue drop indicator
             if (isLocallyDragged && kotlin.math.abs(localDragOffset) > 20) {
                 Box(Modifier.fillMaxWidth().height(3.dp).background(MaterialTheme.colorScheme.primary))
             }

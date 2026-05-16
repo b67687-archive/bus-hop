@@ -297,8 +297,7 @@ fun MainScreen(viewModel: MainViewModel) {
                 .fillMaxSize()
         .padding(
             start = paddingValues.calculateLeftPadding(LayoutDirection.Ltr),
-            // Let content scroll behind the top bar by subtracting its height
-            top = paddingValues.calculateTopPadding() - 56.dp,
+            top = paddingValues.calculateTopPadding(),
             end = paddingValues.calculateRightPadding(LayoutDirection.Ltr),
             bottom = paddingValues.calculateBottomPadding()
         )
@@ -343,7 +342,7 @@ fun MainScreen(viewModel: MainViewModel) {
                                 state = listState,
                                 modifier = Modifier.fillMaxSize(),
                                 contentPadding = PaddingValues(
-                                    start = 16.dp, end = 16.dp, top = 72.dp, bottom = 40.dp
+                                    start = 16.dp, end = 16.dp, top = 16.dp, bottom = 40.dp
                                 ),
                                 verticalArrangement = Arrangement.spacedBy(12.dp)
                             ) {
