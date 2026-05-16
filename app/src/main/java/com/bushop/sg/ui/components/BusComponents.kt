@@ -126,11 +126,8 @@ fun BusStopCard(
         border = if (isPinned) BorderStroke(2.dp, MaterialTheme.colorScheme.primary) else null,
         elevation = CardDefaults.cardElevation(defaultElevation = if (visuallyDragged) 12.dp else 3.dp)
     ) {
-    Column(modifier = Modifier.padding(horizontal = 16.dp)) {
-            // Blue drop indicator
-            if (isLocallyDragged && kotlin.math.abs(localDragOffset) > 20) {
-                Box(Modifier.fillMaxWidth().height(3.dp).background(MaterialTheme.colorScheme.primary))
-            }
+    Column {
+            // ── Blue header (full width, no side padding) ──
             Row(
                 modifier = Modifier
                     .fillMaxWidth()
@@ -149,27 +146,26 @@ fun BusStopCard(
                     .then(
                         if (onMoveStop != null) Modifier.pointerInput(onMoveStop) {
                             var totalY = 0f
-                            var swapCount = 0
-                            val swapThresh = with(dragDensity) { 60.dp.toPx() }
+                            val itemHeightPx = with(dragDensity) { 140.dp.toPx() }
                             detectDragGesturesAfterLongPress(
                                 onDragStart = {
                                     totalY = 0f
-                                    swapCount = 0
                                     isLocallyDragged = true
                                     localDragOffset = 0f
+                                    // Auto-collapse when starting drag
+                                    if (!isCollapsed) onToggleCollapse()
                                     haptic.performHapticFeedback(HapticFeedbackType.LongPress)
                                 },
                                 onDrag = { change, dragAmount ->
                                     change.consume()
                                     totalY += dragAmount.y
                                     localDragOffset = totalY
-                                    val nextThresh = swapThresh * (swapCount + 1)
-                                    if (totalY < -nextThresh) { onMoveStop!!(-1); swapCount++ }
-                                    else if (totalY > nextThresh) { onMoveStop!!(1); swapCount++ }
                                 },
                                 onDragEnd = {
                                     isLocallyDragged = false
                                     localDragOffset = 0f
+                                    val delta = (totalY / itemHeightPx).toInt()
+                                    if (delta != 0) onMoveStop!!(delta)
                                 },
                                 onDragCancel = {
                                     isLocallyDragged = false
@@ -178,7 +174,7 @@ fun BusStopCard(
                             )
                         } else Modifier
                     )
-                    .padding(top = 12.dp, bottom = 12.dp),
+                    .padding(horizontal = 16.dp, vertical = 12.dp),
                 horizontalArrangement = Arrangement.SpaceBetween,
                 verticalAlignment = Alignment.CenterVertically
             ) {
@@ -266,6 +262,10 @@ fun BusStopCard(
                     }
                 }
             }
+            // Blue drop indicator
+            if (isLocallyDragged && kotlin.math.abs(localDragOffset) > 20) {
+                Box(Modifier.fillMaxWidth().height(3.dp).background(MaterialTheme.colorScheme.primary))
+            }
 
             val easing = FastOutSlowInEasing
             AnimatedVisibility(
@@ -278,7 +278,7 @@ fun BusStopCard(
                 FlowRow(
                     modifier = Modifier
                         .fillMaxWidth()
-                        .padding(vertical = 8.dp),
+                        .padding(horizontal = 16.dp, vertical = 8.dp),
                     horizontalArrangement = Arrangement.spacedBy(8.dp),
                     verticalArrangement = Arrangement.spacedBy(4.dp)
                 ) {
@@ -295,7 +295,7 @@ fun BusStopCard(
                 exit = fadeOut(animationSpec = tween(durationMillis = 150, easing = easing)) +
                         shrinkVertically(animationSpec = tween(durationMillis = 150, easing = easing))
             ) {
-                Column {
+                Column(modifier = Modifier.padding(horizontal = 16.dp)) {
                     Spacer(modifier = Modifier.height(8.dp))
 
                     when {
