@@ -583,6 +583,9 @@ class MainViewModel(
     }
 
     fun resumeAutoRefresh() {
+        // Refresh immediately when app comes to foreground
+        refreshAll(isAutoRefresh = true)
+        // Then restart the timer for subsequent refreshes
         if (autoRefreshIntervalSeconds > 0) {
             autoRefreshController.start(autoRefreshIntervalSeconds) { refreshAll(isAutoRefresh = true) }
         }
