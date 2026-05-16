@@ -112,6 +112,7 @@ dependencies {
 
     debugImplementation(libs.compose.ui.tooling)
     debugImplementation(libs.compose.ui.test.manifest)
+    androidTestImplementation(libs.compose.ui.test.junit4)
 
     coreLibraryDesugaring("com.android.tools:desugar_jdk_libs:2.0.4")
 
