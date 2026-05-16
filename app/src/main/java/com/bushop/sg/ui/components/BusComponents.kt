@@ -131,7 +131,7 @@ fun BusStopCard(
             Row(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .clip(RoundedCornerShape(topStart = 20.dp, topEnd = 20.dp))
+                    .clip(RoundedCornerShape(12.dp))
                     .background(MaterialTheme.colorScheme.primaryContainer)
                     .pointerInput(onToggleCollapse, onDelete, onMoveStop) {
                         detectTapGestures(
@@ -152,8 +152,6 @@ fun BusStopCard(
                                     totalY = 0f
                                     isLocallyDragged = true
                                     localDragOffset = 0f
-                                    // Auto-collapse when starting drag
-                                    if (!isCollapsed) onToggleCollapse()
                                     haptic.performHapticFeedback(HapticFeedbackType.LongPress)
                                 },
                                 onDrag = { change, dragAmount ->
@@ -194,7 +192,7 @@ fun BusStopCard(
                             modifier = Modifier
                                 .widthIn(max = 130.dp)
                                 .clip(RoundedCornerShape(10.dp))
-                                .background(MaterialTheme.colorScheme.primaryContainer)
+                                .background(MaterialTheme.colorScheme.surface)
                                 .padding(horizontal = 14.dp, vertical = 8.dp)
                         ) {
                             Text(
