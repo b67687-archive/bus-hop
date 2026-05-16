@@ -90,15 +90,11 @@ fun BusStopCard(
     onDelete: () -> Unit,
     onTogglePinService: (String) -> Unit,
     pinnedServiceNos: Set<String> = emptySet(),
-    onMoveStop: ((Int) -> Unit)? = null,  // called on drag end (delta = multi-position delta)
-    onDragUpdate: ((code: String, totalY: Float) -> Unit)? = null,  // called each frame during drag
-    onDragEnd: ((code: String, lastTotalY: Float) -> Unit)? = null,  // called when drag ends, before reset
-    sourceIndex: Int = 0,                 // this card's index in the list
-    isDragged: Boolean = false,           // visual: card is the one being dragged
+    onMoveStop: ((Int) -> Unit)? = null,  // called on drag end (multi-position delta)
+    onDragStart: ((code: String) -> Unit)? = null,   // called when drag begins
+    onDragEnd: ((code: String, lastTotalY: Float) -> Unit)? = null,  // called when drag ends
+    isDragged: Boolean = false,           // visual: card is being dragged
     dragOffset: Float = 0f,               // visual: pixels the card should offset by
-    draggedCode: String? = null,          // the code of the card being dragged
-    dragSourceIndex: Int = -1,            // original index of the dragged card
-    dragTargetIndex: Int = -1,            // visual insertion index for gap effect
     modifier: Modifier = Modifier
 ) {
     val busStopCode = stop.busStop.code
@@ -117,32 +113,16 @@ fun BusStopCard(
     var collapsedForDrag by remember { mutableStateOf(false) }
     val visuallyDragged = isDragged || isLocallyDragged
     val effectiveOffset = if (isDragged) dragOffset else localDragOffset
-    // Gap shift: when another card is being dragged, cards between source and target shift to make room
-    val gapShift = if (draggedCode != null && draggedCode != busStopCode && dragTargetIndex >= 0) {
-        // sourceIndex is this card's position
-        // dragSourceIdx is where the dragged card started (derived from draggedCode's position)
-        // dragTargetIndex is where it's being inserted
-        if (sourceIndex > dragSourceIndex && sourceIndex <= dragTargetIndex) {
-            -itemHeightPx  // dragging DOWN: cards between shift UP to open gap
-        } else if (sourceIndex < dragSourceIndex && sourceIndex >= dragTargetIndex) {
-            itemHeightPx   // dragging UP: cards between shift DOWN to open gap
-        } else 0f
-    } else 0f
-    val needTranslation = visuallyDragged || gapShift != 0f
-    val totalTranslationY = if (visuallyDragged) effectiveOffset + gapShift else gapShift
     val effectiveCollapsed = collapsedForDrag || isCollapsed
 
     Card(
         modifier = modifier
             .fillMaxWidth()
             .then(
-                if (needTranslation) Modifier
-                    .zIndex(if (visuallyDragged) 1f else 0f)
-                    .graphicsLayer { translationY = totalTranslationY }
-                    .then(
-                        if (visuallyDragged) Modifier.shadow(12.dp, RoundedCornerShape(20.dp))
-                        else Modifier
-                    )
+                if (visuallyDragged) Modifier
+                    .zIndex(1f)
+                    .graphicsLayer { translationY = effectiveOffset }
+                    .shadow(12.dp, RoundedCornerShape(20.dp))
                 else Modifier
             ),
         shape = RoundedCornerShape(20.dp),
@@ -178,25 +158,23 @@ fun BusStopCard(
                                             localDragOffset = 0f
                                             if (!isCollapsed) collapsedForDrag = true
                                             haptic.performHapticFeedback(HapticFeedbackType.LongPress)
+                                            onDragStart?.invoke(busStopCode)
                                         },
                                         onDrag = { change, dragAmount ->
                                             change.consume()
                                             totalY += dragAmount.y
                                             localDragOffset = totalY
-                                            onDragUpdate?.invoke(busStopCode, totalY)
                                         },
                                         onDragEnd = {
                                             onDragEnd?.invoke(busStopCode, totalY)
                                             isLocallyDragged = false
                                             localDragOffset = 0f
                                             collapsedForDrag = false
-                                            onDragUpdate?.invoke(busStopCode, 0f)
                                         },
                                         onDragCancel = {
                                             isLocallyDragged = false
                                             localDragOffset = 0f
                                             collapsedForDrag = false
-                                            onDragUpdate?.invoke(busStopCode, 0f)
                                         }
                                     )
                                 }

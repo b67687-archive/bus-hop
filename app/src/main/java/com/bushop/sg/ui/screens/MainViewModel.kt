@@ -179,6 +179,20 @@ class MainViewModel(
         private set
     var isDownloadingUpdate by mutableStateOf(false)
     var hasSeenDragHint by mutableStateOf(false)
+        private set
+
+    private fun loadHintPref() {
+        val prefs = getApplication<android.app.Application>()
+            .getSharedPreferences("bushop_prefs", 0)
+        hasSeenDragHint = prefs.getBoolean("has_seen_hint", false)
+    }
+
+    fun dismissHint() {
+        hasSeenDragHint = true
+        getApplication<android.app.Application>()
+            .getSharedPreferences("bushop_prefs", 0)
+            .edit().putBoolean("has_seen_hint", true).apply()
+    }
     var downloadProgress by mutableStateOf(0f)
         private set
 
@@ -235,6 +249,7 @@ class MainViewModel(
     }
 
     init {
+        loadHintPref()
         // Restore persisted preferences
         viewModelScope.launch {
             repository.themeModeFlow.collect { mode ->
