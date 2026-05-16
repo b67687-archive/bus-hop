@@ -11,8 +11,8 @@ android {
         applicationId = "com.bushop.sg"
         minSdk = 24
         targetSdk = 34
-        versionCode = 24
-        versionName = "0.7.9"
+        versionCode = 25
+        versionName = "0.7.10"
 
 
         vectorDrawables {
