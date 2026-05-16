@@ -18,6 +18,7 @@ import com.bushop.sg.data.api.RetrofitBusArrivalDataSource
 import com.bushop.sg.data.local.BusStopIndex
 import com.bushop.sg.data.local.BusStopStorage
 import com.bushop.sg.data.repository.BusRepositoryImpl
+import com.bushop.sg.domain.model.ColorSchemeOption
 import com.bushop.sg.domain.model.ThemeMode
 import com.bushop.sg.ui.screens.MainScreen
 import com.bushop.sg.ui.screens.MainViewModel
@@ -43,6 +44,7 @@ class MainActivity : ComponentActivity() {
         setContent {
             val viewModel: MainViewModel = viewModel(factory = viewModelFactory)
             val themeMode by viewModel.themeModeFlow.collectAsState()
+            val colorSchemeOption by viewModel.colorSchemeOptionFlow.collectAsState()
             val isDarkTheme = when (themeMode) {
                 ThemeMode.SYSTEM -> isSystemInDarkTheme()
                 ThemeMode.LIGHT -> false
@@ -63,7 +65,7 @@ class MainActivity : ComponentActivity() {
                 onDispose { lifecycleOwner.lifecycle.removeObserver(observer) }
             }
 
-            BusHopTheme(darkTheme = isDarkTheme) {
+            BusHopTheme(darkTheme = isDarkTheme, colorSchemeOption = colorSchemeOption) {
                 MainScreen(viewModel = viewModel)
             }
         }

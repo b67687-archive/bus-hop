@@ -9,10 +9,11 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
-import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.MyLocation
 import androidx.compose.material.icons.filled.Search
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.CircularProgressIndicator
@@ -41,11 +42,17 @@ fun AddBusStopDialog(
     searchResults: List<BusStopEntry>,
     onSearchQueryChanged: (String) -> Unit,
     onDismiss: () -> Unit,
-    onConfirm: (code: String, name: String) -> Unit
+    onConfirm: (code: String, name: String) -> Unit,
+    // Nearby stops
+    nearbyStops: List<BusStopEntry> = emptyList(),
+    isLoadingNearby: Boolean = false,
+    nearbyError: String? = null,
+    onFindNearby: () -> Unit = {}
 ) {
     var searchQuery by remember { mutableStateOf("") }
     var selectedEntry by remember { mutableStateOf<BusStopEntry?>(null) }
-    val displayError = error
+    var confirmNearby by remember { mutableStateOf<BusStopEntry?>(null) }
+    val displayError = error ?: nearbyError
 
     LaunchedEffect(searchQuery) {
         if (searchQuery.length >= 2) {
@@ -53,13 +60,33 @@ fun AddBusStopDialog(
         }
     }
 
+    // Show nearby results when available
+    val activeResults = if (nearbyStops.isNotEmpty() && searchQuery.length < 2) nearbyStops else searchResults
+    val showNearbyHeader = nearbyStops.isNotEmpty() && searchQuery.length < 2
+
     AlertDialog(
-        onDismissRequest = onDismiss,
-        title = { Text("Add Bus Stop") },
+        onDismissRequest = {
+            if (confirmNearby != null) { confirmNearby = null; return@AlertDialog }
+            onDismiss()
+        },
+        title = {
+            Text(if (confirmNearby != null) "Confirm Add" else "Add Bus Stop")
+        },
         text = {
             Column {
+                if (confirmNearby != null) {
+                    val s = confirmNearby!!
+                    Text("Add this stop?", style = MaterialTheme.typography.bodyLarge)
+                    Spacer(Modifier.height(8.dp))
+                    Text("${s.code} — ${s.name}", fontWeight = FontWeight.Bold)
+                    Text(s.road, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                    return@Column
+                }
+
                 Text(
-                    text = if (selectedEntry != null) "Bus stop selected" else "Search by code or name",
+                    text = if (selectedEntry != null) "Bus stop selected"
+                           else if (showNearbyHeader) "Nearby stops — tap to add"
+                           else "Search by code or name",
                     style = MaterialTheme.typography.bodyMedium,
                     color = MaterialTheme.colorScheme.onSurfaceVariant
                 )
@@ -78,117 +105,92 @@ fun AddBusStopDialog(
                     isError = displayError != null,
                     enabled = !isLoading,
                     leadingIcon = {
-                        Icon(
-                            imageVector = Icons.Default.Search,
-                            contentDescription = null,
-                            modifier = Modifier.size(20.dp)
-                        )
+                        Icon(imageVector = Icons.Default.Search, contentDescription = null, modifier = Modifier.size(20.dp))
                     }
                 )
 
-                if (displayError != null) {
-                    Spacer(modifier = Modifier.height(4.dp))
-                    Text(
-                        text = displayError,
-                        style = MaterialTheme.typography.bodySmall,
-                        color = MaterialTheme.colorScheme.error
-                    )
+                // Nearby button
+                if (!showNearbyHeader && searchQuery.length < 2) {
+                    Spacer(Modifier.height(8.dp))
+                    TextButton(onClick = onFindNearby, enabled = !isLoadingNearby) {
+                        Icon(Icons.Default.MyLocation, contentDescription = null, modifier = Modifier.size(16.dp))
+                        Spacer(Modifier.width(6.dp))
+                        Text(if (isLoadingNearby) "Locating…" else "Find nearby stops")
+                    }
                 }
 
-                // Search results or selected entry info
+                if (displayError != null) {
+                    Spacer(modifier = Modifier.height(4.dp))
+                    Text(text = displayError, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.error)
+                }
+
+                // Results list
                 if (selectedEntry != null) {
                     Spacer(modifier = Modifier.height(8.dp))
-                    Text(
-                        text = selectedEntry?.let { "Code: ${it.code}\n${it.displayName}" } ?: "",
-                        style = MaterialTheme.typography.bodySmall,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant
-                    )
-                } else if (searchQuery.length >= 2 && searchResults.isNotEmpty()) {
+                    Text("Code: ${selectedEntry!!.code}\n${selectedEntry!!.displayName}", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                } else if (activeResults.isNotEmpty()) {
                     Spacer(modifier = Modifier.height(8.dp))
-                    LazyColumn(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .height(260.dp),
-                        verticalArrangement = Arrangement.spacedBy(2.dp)
-                    ) {
-                        items(searchResults) { entry ->
+                    if (showNearbyHeader) {
+                        Text("${activeResults.size} stops within ~500m", style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                        Spacer(Modifier.height(4.dp))
+                    }
+                    LazyColumn(modifier = Modifier.fillMaxWidth().height(260.dp), verticalArrangement = Arrangement.spacedBy(2.dp)) {
+                        items(activeResults) { entry ->
                             Row(
-                                modifier = Modifier
-                                    .fillMaxWidth()
-                                    .clickable {
-                                        selectedEntry = entry
-                                        searchQuery = "${entry.code} - ${entry.name}"
-                                    }
-                                    .padding(horizontal = 8.dp, vertical = 8.dp),
+                                modifier = Modifier.fillMaxWidth().clickable {
+                                    selectedEntry = entry
+                                    searchQuery = "${entry.code} - ${entry.name}"
+                                }.padding(horizontal = 8.dp, vertical = 8.dp),
                                 verticalAlignment = Alignment.CenterVertically,
                                 horizontalArrangement = Arrangement.SpaceBetween
                             ) {
                                 Column(modifier = Modifier.weight(1f)) {
-                                    Text(
-                                        text = entry.name,
-                                        style = MaterialTheme.typography.bodyMedium,
-                                        fontWeight = FontWeight.Medium
-                                    )
-                                    Text(
-                                        text = entry.road,
-                                        style = MaterialTheme.typography.labelSmall,
-                                        color = MaterialTheme.colorScheme.onSurfaceVariant
-                                    )
+                                    Text(entry.name, style = MaterialTheme.typography.bodyMedium, fontWeight = FontWeight.Medium)
+                                    Text(entry.road, style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
                                 }
-                                Text(
-                                    text = entry.code,
-                                    style = MaterialTheme.typography.labelMedium,
-                                    fontWeight = FontWeight.Bold,
-                                    color = MaterialTheme.colorScheme.primary
-                                )
+                                Text(entry.code, style = MaterialTheme.typography.labelMedium, fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.primary)
                             }
                         }
                     }
                 } else if (searchQuery.length >= 2 && searchResults.isEmpty() && !isLoading) {
                     Spacer(modifier = Modifier.height(8.dp))
-                    Text(
-                        text = "No bus stops found. You can type a 5-digit code and press Add.",
-                        style = MaterialTheme.typography.bodySmall,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant
-                    )
+                    Text("No bus stops found. You can type a 5-digit code and press Add.", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
                 }
             }
         },
         confirmButton = {
-            TextButton(
-                onClick = {
-                    val entry = selectedEntry
-                    if (entry != null) {
-                        onConfirm(entry.code, entry.name)
-                    } else if (searchQuery.length == 5 && searchQuery.all { it.isDigit() }) {
-                        // Manual code entry — try to find name from index, use code if not found
-                        onConfirm(searchQuery, searchQuery)
+            if (confirmNearby != null) {
+                TextButton(onClick = { onConfirm(confirmNearby!!.code, confirmNearby!!.name); confirmNearby = null }) { Text("Yes, add stop") }
+            } else {
+                TextButton(
+                    onClick = {
+                        val entry = selectedEntry
+                        if (entry != null) {
+                            onConfirm(entry.code, entry.name)
+                        } else if (searchQuery.length == 5 && searchQuery.all { it.isDigit() }) {
+                            onConfirm(searchQuery, searchQuery)
+                        } else {
+                            onSearchQueryChanged(searchQuery)
+                        }
+                    },
+                    enabled = !isLoading && (selectedEntry != null || (searchQuery.length == 5 && searchQuery.all { it.isDigit() }))
+                ) {
+                    if (isLoading) {
+                        Row(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalAlignment = Alignment.CenterVertically) {
+                            CircularProgressIndicator(modifier = Modifier.size(16.dp), strokeWidth = 2.dp)
+                            Text("Checking...")
+                        }
                     } else {
-                        // User typed something but it's not a valid code — try searching
-                        onSearchQueryChanged(searchQuery)
+                        Text("Add")
                     }
-                },
-                enabled = !isLoading && (selectedEntry != null || (searchQuery.length == 5 && searchQuery.all { it.isDigit() }))
-            ) {
-                if (isLoading) {
-                    Row(
-                        horizontalArrangement = Arrangement.spacedBy(8.dp),
-                        verticalAlignment = Alignment.CenterVertically
-                    ) {
-                        CircularProgressIndicator(
-                            modifier = Modifier.size(16.dp),
-                            strokeWidth = 2.dp
-                        )
-                        Text("Checking...")
-                    }
-                } else {
-                    Text("Add")
                 }
             }
         },
         dismissButton = {
-            TextButton(onClick = onDismiss) {
-                Text("Cancel")
+            if (confirmNearby != null) {
+                TextButton(onClick = { confirmNearby = null }) { Text("Cancel") }
+            } else {
+                TextButton(onClick = onDismiss) { Text("Cancel") }
             }
         }
     )
