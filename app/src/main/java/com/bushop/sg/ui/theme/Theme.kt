@@ -6,6 +6,7 @@ import androidx.compose.material3.darkColorScheme
 import androidx.compose.material3.lightColorScheme
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.graphics.Color
+import com.bushop.sg.domain.model.ColorSchemeOption
 
 val LightColorScheme = lightColorScheme(
     primary = Color(0xFF007AFF),
@@ -47,12 +48,57 @@ val DarkColorScheme = darkColorScheme(
     onError = Color.White
 )
 
+/** Contrast Blue — punchier version of the classic scheme. */
+val ContrastLightColorScheme = lightColorScheme(
+    primary = Color(0xFF0050CC),
+    onPrimary = Color.White,
+    primaryContainer = Color(0xFFD6E4FF),
+    onPrimaryContainer = Color(0xFF002266),
+    secondary = Color(0xFF2C9E4E),
+    onSecondary = Color.White,
+    secondaryContainer = Color(0xFFDAF0E0),
+    onSecondaryContainer = Color(0xFF0C351D),
+    background = Color(0xFFEBEFF5),
+    onBackground = Color(0xFF111318),
+    surface = Color.White,
+    onSurface = Color(0xFF111318),
+    surfaceVariant = Color(0xFFE2E6ED),
+    onSurfaceVariant = Color(0xFF50545C),
+    outline = Color(0xFFC4C8D0),
+    error = Color(0xFFD32F2F),
+    onError = Color.White
+)
+
+val ContrastDarkColorScheme = darkColorScheme(
+    primary = Color(0xFF6EB0FF),
+    onPrimary = Color(0xFF002F6C),
+    primaryContainer = Color(0xFF0045A0),
+    onPrimaryContainer = Color(0xFFD6E4FF),
+    secondary = Color(0xFF4BC572),
+    onSecondary = Color(0xFF003919),
+    secondaryContainer = Color(0xFF145330),
+    onSecondaryContainer = Color(0xFFC6F0D2),
+    background = Color(0xFF0E0E11),
+    onBackground = Color(0xFFE8E8EC),
+    surface = Color(0xFF1A1A1F),
+    onSurface = Color(0xFFE8E8EC),
+    surfaceVariant = Color(0xFF26282E),
+    onSurfaceVariant = Color(0xFFA9ADB5),
+    outline = Color(0xFF4A4E56),
+    error = Color(0xFFFF5252),
+    onError = Color.White
+)
+
 @Composable
 fun BusHopTheme(
     darkTheme: Boolean = isSystemInDarkTheme(),
+    colorSchemeOption: ColorSchemeOption = ColorSchemeOption.BLUE,
     content: @Composable () -> Unit
 ) {
-    val colorScheme = if (darkTheme) DarkColorScheme else LightColorScheme
+    val colorScheme = when (colorSchemeOption) {
+        ColorSchemeOption.BLUE -> if (darkTheme) DarkColorScheme else LightColorScheme
+        ColorSchemeOption.CONTRAST_BLUE -> if (darkTheme) ContrastDarkColorScheme else ContrastLightColorScheme
+    }
 
     MaterialTheme(
         colorScheme = colorScheme,

@@ -13,6 +13,7 @@ import com.bushop.sg.domain.model.DuplicateStopException
 import com.bushop.sg.BuildConfig
 import com.bushop.sg.data.api.UpdateChecker
 import com.bushop.sg.data.api.UpdateInfo
+import com.bushop.sg.domain.model.ColorSchemeOption
 import com.bushop.sg.domain.model.BusStop
 import com.bushop.sg.domain.model.BusStopWithArrivals
 import com.bushop.sg.domain.model.NetworkResult
@@ -104,6 +105,15 @@ class MainViewModel(
         viewModelScope.launch {
             repository.setThemeMode(mode)
         }
+    }
+
+    // ── Colour scheme ──
+
+    private val _colorSchemeOptionFlow = MutableStateFlow(ColorSchemeOption.BLUE)
+    val colorSchemeOptionFlow: StateFlow<ColorSchemeOption> = _colorSchemeOptionFlow.asStateFlow()
+
+    fun setColorSchemeOption(option: ColorSchemeOption) {
+        _colorSchemeOptionFlow.value = option
     }
 
     // ── Index readiness ──

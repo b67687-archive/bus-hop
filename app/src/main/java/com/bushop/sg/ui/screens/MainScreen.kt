@@ -75,6 +75,7 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import com.bushop.sg.data.api.UpdateInfo
 import com.bushop.sg.data.local.BusStopEntry
+import com.bushop.sg.domain.model.ColorSchemeOption
 import com.bushop.sg.domain.model.ThemeMode
 import com.bushop.sg.ui.components.AddBusStopDialog
 import com.bushop.sg.BuildConfig
@@ -166,6 +167,7 @@ fun MainScreen(viewModel: MainViewModel) {
     val apiStatus by viewModel.apiStatus.collectAsState()
     val pinnedServices by viewModel.pinnedServices.collectAsState()
     val themeMode by viewModel.themeModeFlow.collectAsState()
+    val colorSchemeOption by viewModel.colorSchemeOptionFlow.collectAsState()
     val isIndexReady by viewModel.isIndexReady.collectAsState()
     val listState = rememberLazyListState()
     var showSettings by remember { mutableStateOf(false) }
@@ -263,15 +265,6 @@ fun MainScreen(viewModel: MainViewModel) {
                             tint = if (viewModel.isRefreshing) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant
                         )
                     }
-                    IconButton(onClick = {
-                        nearbyLauncher.launch(arrayOf(android.Manifest.permission.ACCESS_FINE_LOCATION))
-                    }) {
-                        Icon(
-                            imageVector = Icons.Default.MyLocation,
-                            contentDescription = "Nearby stops",
-                            tint = if (viewModel.nearbyStops.isNotEmpty()) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant
-                        )
-                    }
                     IconButton(onClick = onSettingsClick) {
                         Icon(
                             imageVector = Icons.Default.Settings,
@@ -280,7 +273,7 @@ fun MainScreen(viewModel: MainViewModel) {
                     }
                 },
                 colors = TopAppBarDefaults.centerAlignedTopAppBarColors(
-                    containerColor = MaterialTheme.colorScheme.surface.copy(alpha = 0.30f),
+                    containerColor = MaterialTheme.colorScheme.surface.copy(alpha = 0.55f),
                     titleContentColor = MaterialTheme.colorScheme.onBackground,
                     scrolledContainerColor = MaterialTheme.colorScheme.surface.copy(alpha = 0.85f)
                 )
@@ -419,47 +412,13 @@ fun MainScreen(viewModel: MainViewModel) {
         }  // close outer Box
     }  // close Scaffold content
 
-    // ── Nearby stops dialog ──
-    if (viewModel.nearbyStops.isNotEmpty() || viewModel.nearbyError != null) {
-        AlertDialog(
-            onDismissRequest = { viewModel.clearNearby() },
-            title = { Text("Nearby Stops") },
-            text = {
-                Column {
-                    if (viewModel.isLoadingNearby) {
-                        CircularProgressIndicator(modifier = Modifier.size(24.dp))
-                    } else if (viewModel.nearbyError != null) {
-                        Text(viewModel.nearbyError!!, color = MaterialTheme.colorScheme.onSurfaceVariant)
-                    } else {
-                        Text("${viewModel.nearbyStops.size} stops within ~500m", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
-                        Spacer(Modifier.height(8.dp))
-                        LazyColumn(modifier = Modifier.height(260.dp)) {
-                            items(viewModel.nearbyStops) { stop ->
-                                Row(
-                                    modifier = Modifier.fillMaxWidth().padding(horizontal = 8.dp, vertical = 6.dp),
-                                    verticalAlignment = Alignment.CenterVertically,
-                                    horizontalArrangement = Arrangement.SpaceBetween
-                                ) {
-                                    Column(Modifier.weight(1f)) {
-                                        Text(stop.name, style = MaterialTheme.typography.bodyMedium, fontWeight = FontWeight.Medium)
-                                        Text(stop.road, style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
-                                    }
-                                    Text(stop.code, style = MaterialTheme.typography.labelMedium, fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.primary)
-                                }
-                            }
-                        }
-                    }
-                }
-            },
-            confirmButton = { TextButton(onClick = { viewModel.clearNearby() }) { Text("OK") } }
-        )
-    }
-
     if (showSettings) {
         SettingsSheet(
             currentTheme = themeMode,
             currentInterval = viewModel.autoRefreshIntervalSeconds,
+            currentColorScheme = colorSchemeOption,
             onThemeChange = { viewModel.setThemeMode(it) },
+            onColorSchemeChange = { viewModel.setColorSchemeOption(it) },
             onIntervalChange = { seconds ->
                 viewModel.setAutoRefreshInterval(seconds)
                 showSettings = false
@@ -483,7 +442,16 @@ fun MainScreen(viewModel: MainViewModel) {
             onSearchQueryChanged = { query ->
                 viewModel.searchBusStops(query)
             },
-            onDismiss = { viewModel.hideAddStopDialog() },
+            onFindNearby = {
+                nearbyLauncher.launch(arrayOf(android.Manifest.permission.ACCESS_FINE_LOCATION))
+            },
+            nearbyStops = viewModel.nearbyStops,
+            isLoadingNearby = viewModel.isLoadingNearby,
+            nearbyError = viewModel.nearbyError,
+            onDismiss = {
+                viewModel.clearNearby()
+                viewModel.hideAddStopDialog()
+            },
             onConfirm = { code, name ->
                 // If name equals code (manual entry), try to find the real name
                 val resolvedName = if (name == code) {
@@ -545,7 +513,9 @@ fun MainScreen(viewModel: MainViewModel) {
 private fun SettingsSheet(
     currentTheme: ThemeMode,
     currentInterval: Int,
+    currentColorScheme: ColorSchemeOption,
     onThemeChange: (ThemeMode) -> Unit,
+    onColorSchemeChange: (ColorSchemeOption) -> Unit,
     onIntervalChange: (Int) -> Unit,
     onCheckUpdate: () -> Unit,
     isCheckingUpdate: Boolean,
@@ -583,6 +553,19 @@ private fun SettingsSheet(
                         RadioButton(selected = currentInterval == seconds, onClick = { onIntervalChange(seconds) })
                         Spacer(modifier = Modifier.width(4.dp))
                         Text(label)
+                    }
+                }
+                Spacer(modifier = Modifier.height(16.dp))
+                Text("Colour Scheme", style = MaterialTheme.typography.titleSmall, fontWeight = androidx.compose.ui.text.font.FontWeight.SemiBold)
+                Spacer(modifier = Modifier.height(4.dp))
+                ColorSchemeOption.entries.forEach { option ->
+                    Row(
+                        verticalAlignment = Alignment.CenterVertically,
+                        modifier = Modifier.fillMaxWidth().clickable { onColorSchemeChange(option) }
+                    ) {
+                        RadioButton(selected = currentColorScheme == option, onClick = { onColorSchemeChange(option) })
+                        Spacer(modifier = Modifier.width(4.dp))
+                        Text(option.displayName)
                     }
                 }
                 Spacer(modifier = Modifier.height(16.dp))

@@ -130,6 +130,10 @@ fun BusStopCard(
         elevation = CardDefaults.cardElevation(defaultElevation = if (visuallyDragged) 12.dp else 3.dp)
     ) {
     Column(modifier = Modifier.padding(horizontal = 16.dp)) {
+            // Blue drop indicator when dragging (shows where item will land)
+            if (isLocallyDragged && localDragOffset < -20) {
+                Box(Modifier.fillMaxWidth().height(3.dp).background(MaterialTheme.colorScheme.primary))
+            }
             Row(
                 modifier = Modifier
                     .fillMaxWidth()
@@ -146,12 +150,12 @@ fun BusStopCard(
                     .then(
                         if (onMoveStop != null) Modifier.pointerInput(onMoveStop) {
                             var totalY = 0f
-                            // Approximate item height: 140dp → pixels at current density.
-                            // Used to convert free-drag totalY into a position delta on drop.
-                            val itemHeightPx = with(dragDensity) { 140.dp.toPx() }
+                            var swapCount = 0
+                            val swapThreshold = with(dragDensity) { 60.dp.toPx() }
                             detectDragGesturesAfterLongPress(
                                 onDragStart = {
                                     totalY = 0f
+                                    swapCount = 0
                                     isLocallyDragged = true
                                     localDragOffset = 0f
                                     haptic.performHapticFeedback(HapticFeedbackType.LongPress)
@@ -159,13 +163,18 @@ fun BusStopCard(
                                 onDrag = { change, dragAmount ->
                                     change.consume()
                                     totalY += dragAmount.y
-                                    localDragOffset = totalY  // free follow — no threshold snap
+                                    localDragOffset = totalY
+                                    if (totalY < -swapThreshold * (swapCount + 1)) {
+                                        onMoveStop!!(-1)
+                                        swapCount++
+                                    } else if (totalY > swapThreshold * (swapCount + 1)) {
+                                        onMoveStop!!(1)
+                                        swapCount++
+                                    }
                                 },
                                 onDragEnd = {
                                     isLocallyDragged = false
                                     localDragOffset = 0f
-                                    val delta = (totalY / itemHeightPx).toInt()
-                                    if (delta != 0) onMoveStop!!(delta)
                                 },
                                 onDragCancel = {
                                     isLocallyDragged = false
