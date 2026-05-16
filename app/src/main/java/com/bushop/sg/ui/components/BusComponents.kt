@@ -106,8 +106,10 @@ fun BusStopCard(
     val dragDensity = LocalDensity.current
     var localDragOffset by remember { mutableStateOf(0f) }
     var isLocallyDragged by remember { mutableStateOf(false) }
+    var collapsedForDrag by remember { mutableStateOf(false) }
     val visuallyDragged = isDragged || isLocallyDragged
     val effectiveOffset = if (isDragged) dragOffset else localDragOffset
+    val effectiveCollapsed = collapsedForDrag || isCollapsed
 
     Card(
         modifier = modifier
@@ -152,6 +154,7 @@ fun BusStopCard(
                                     totalY = 0f
                                     isLocallyDragged = true
                                     localDragOffset = 0f
+                                    if (!isCollapsed) collapsedForDrag = true
                                     haptic.performHapticFeedback(HapticFeedbackType.LongPress)
                                 },
                                 onDrag = { change, dragAmount ->
@@ -162,12 +165,14 @@ fun BusStopCard(
                                 onDragEnd = {
                                     isLocallyDragged = false
                                     localDragOffset = 0f
+                                    collapsedForDrag = false
                                     val delta = (totalY / itemHeightPx).toInt()
                                     if (delta != 0) onMoveStop!!(delta)
                                 },
                                 onDragCancel = {
                                     isLocallyDragged = false
                                     localDragOffset = 0f
+                                    collapsedForDrag = false
                                 }
                             )
                         } else Modifier
@@ -192,14 +197,15 @@ fun BusStopCard(
                             modifier = Modifier
                                 .widthIn(max = 130.dp)
                                 .clip(RoundedCornerShape(10.dp))
-                                .background(MaterialTheme.colorScheme.surface)
-                                .padding(horizontal = 14.dp, vertical = 8.dp)
+                                .background(MaterialTheme.colorScheme.primary)
+                                .padding(horizontal = 12.dp, vertical = 8.dp)
                         ) {
                             Text(
                                 text = busStopName,
                                 fontSize = dynamicFontSize,
                                 style = nameTextStyle.copy(fontSize = dynamicFontSize),
                                 fontWeight = FontWeight.Bold,
+                                color = MaterialTheme.colorScheme.onPrimary,
                                 maxLines = 3
                             )
                         }
@@ -253,8 +259,8 @@ fun BusStopCard(
                         contentAlignment = Alignment.Center
                     ) {
                         Icon(
-                            imageVector = if (isCollapsed) Icons.Default.ExpandMore else Icons.Default.ExpandLess,
-                            contentDescription = if (isCollapsed) "Expand" else "Collapse",
+                        imageVector = if (effectiveCollapsed) Icons.Default.ExpandMore else Icons.Default.ExpandLess,
+                        contentDescription = if (effectiveCollapsed) "Expand" else "Collapse",
                             modifier = Modifier.size(18.dp)
                         )
                     }
@@ -267,7 +273,7 @@ fun BusStopCard(
 
             val easing = FastOutSlowInEasing
             AnimatedVisibility(
-                visible = isCollapsed && services.isNotEmpty(),
+                visible = effectiveCollapsed && services.isNotEmpty(),
                 enter = fadeIn(animationSpec = tween(durationMillis = 280, easing = easing)) +
                         expandVertically(animationSpec = tween(durationMillis = 280, easing = easing)),
                 exit = fadeOut(animationSpec = tween(durationMillis = 150, easing = easing)) +
@@ -287,7 +293,7 @@ fun BusStopCard(
             }
 
             AnimatedVisibility(
-                visible = !isCollapsed,
+                visible = !effectiveCollapsed,
                 enter = fadeIn(animationSpec = tween(durationMillis = 280, easing = easing)) +
                         expandVertically(animationSpec = tween(durationMillis = 280, easing = easing)),
                 exit = fadeOut(animationSpec = tween(durationMillis = 150, easing = easing)) +
