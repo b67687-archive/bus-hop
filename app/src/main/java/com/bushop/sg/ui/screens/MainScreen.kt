@@ -15,10 +15,11 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.lazy.LazyColumn
-import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
+import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.MyLocation
 import androidx.compose.material.icons.outlined.Accessibility
 import androidx.compose.material.icons.filled.BrightnessAuto
@@ -70,6 +71,7 @@ import androidx.compose.foundation.clickable
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.ui.input.nestedscroll.nestedScroll
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
@@ -175,6 +177,14 @@ fun MainScreen(viewModel: MainViewModel) {
     val scrollBehavior = TopAppBarDefaults.enterAlwaysScrollBehavior()
     
     var deleteTarget by remember { mutableStateOf<String?>(null) }
+
+    // Drag state for dynamic gap effect + delete zone
+    var draggedCode by remember { mutableStateOf<String?>(null) }
+    var dragTotalOffset by remember { mutableStateOf(0f) }
+    val density = LocalDensity.current
+    val dragItemHeightPx = with(density) { 140.dp.toPx() }
+    val deleteZoneThresholdPx = with(density) { 60.dp.toPx() }
+    val isOverDeleteZone = dragTotalOffset > (savedStops.size * dragItemHeightPx + deleteZoneThresholdPx)
 
     // Scroll to top when a new stop is pinned
     var prevPinnedCount by remember { mutableStateOf(0) }
@@ -346,10 +356,18 @@ fun MainScreen(viewModel: MainViewModel) {
                                 ),
                                 verticalArrangement = Arrangement.spacedBy(12.dp)
                             ) {
-                                items(
+                                itemsIndexed(
                                     items = savedStops,
-                                    key = { it.busStop.code }
-                                ) { stopWithArrivals ->
+                                    key = { _, item -> item.busStop.code }
+                                ) { index, stopWithArrivals ->
+                                    // Calculate target index once using the dragged card's source index
+                                    val dragSourceIdx = if (draggedCode != null) {
+                                        savedStops.indexOfFirst { it.busStop.code == draggedCode }
+                                    } else -1
+                                    val dragTargetIdx = if (dragSourceIdx >= 0) {
+                                        val totalInItems = (dragTotalOffset / dragItemHeightPx).toInt()
+                                        (dragSourceIdx + totalInItems).coerceIn(0, savedStops.lastIndex)
+                                    } else -1
                                     BusStopCard(
                                         modifier = Modifier.animateItem(),
                                         stop = stopWithArrivals,
@@ -365,7 +383,23 @@ fun MainScreen(viewModel: MainViewModel) {
                                             .map { it.substringAfter(":") }.toSet(),
                                         onMoveStop = { delta ->
                                             viewModel.moveStop(stopWithArrivals.busStop.code, delta)
-                                        }
+                                        },
+                                        onDragUpdate = { code, totalY ->
+                                            draggedCode = code
+                                            dragTotalOffset = totalY
+                                        },
+                                        onDragEnd = { code, lastTotalY ->
+                                            if (isOverDeleteZone) {
+                                                viewModel.removeBusStop(code)
+                                            } else if (lastTotalY != 0f) {
+                                                val delta = (lastTotalY / dragItemHeightPx).toInt()
+                                                if (delta != 0) viewModel.moveStop(code, delta)
+                                            }
+                                        },
+                                        sourceIndex = index,
+                                        draggedCode = draggedCode,
+                                        dragSourceIndex = dragSourceIdx,
+                                        dragTargetIndex = dragTargetIdx
                                     )
                                 }
                             }
@@ -408,10 +442,52 @@ fun MainScreen(viewModel: MainViewModel) {
                 }
             }
         }
-        }  // close outer Box
-    }  // close Scaffold content
-
-    if (showSettings) {
+         // ── Drag-to-delete zone overlay ──
+         if (draggedCode != null) {
+             val deleteZoneBg by animateColorAsState(
+                 targetValue = if (isOverDeleteZone)
+                     MaterialTheme.colorScheme.error
+                 else
+                     MaterialTheme.colorScheme.errorContainer.copy(alpha = 0.6f),
+                 animationSpec = tween(durationMillis = 200)
+             )
+             Box(
+                 modifier = Modifier
+                     .align(Alignment.BottomCenter)
+                     .fillMaxWidth()
+                     .height(80.dp)
+                     .background(deleteZoneBg)
+                     .padding(16.dp),
+                 contentAlignment = Alignment.Center
+             ) {
+                 Row(
+                     verticalAlignment = Alignment.CenterVertically,
+                     horizontalArrangement = Arrangement.spacedBy(8.dp)
+                 ) {
+                     Icon(
+                         imageVector = Icons.Default.Delete,
+                         contentDescription = null,
+                         tint = if (isOverDeleteZone)
+                             MaterialTheme.colorScheme.onError
+                         else
+                             MaterialTheme.colorScheme.onErrorContainer
+                     )
+                     Text(
+                         text = if (isOverDeleteZone) "Release to delete" else "Drag here to delete",
+                         style = MaterialTheme.typography.titleSmall,
+                         color = if (isOverDeleteZone)
+                             MaterialTheme.colorScheme.onError
+                         else
+                             MaterialTheme.colorScheme.onErrorContainer,
+                         fontWeight = FontWeight.Bold
+                     )
+                 }
+             }
+         }
+         }  // close outer Box
+     }  // close Scaffold content
+ 
+     if (showSettings) {
         SettingsSheet(
             currentTheme = themeMode,
             currentInterval = viewModel.autoRefreshIntervalSeconds,

@@ -96,9 +96,15 @@ fun BusStopCard(
     onDelete: () -> Unit,
     onTogglePinService: (String) -> Unit,
     pinnedServiceNos: Set<String> = emptySet(),
-    onMoveStop: ((Int) -> Unit)? = null,  // called with delta (-1 up, +1 down)
+    onMoveStop: ((Int) -> Unit)? = null,  // called on drag end (delta = multi-position delta)
+    onDragUpdate: ((code: String, totalY: Float) -> Unit)? = null,  // called each frame during drag
+    onDragEnd: ((code: String, lastTotalY: Float) -> Unit)? = null,  // called when drag ends, before reset
+    sourceIndex: Int = 0,                 // this card's index in the list
     isDragged: Boolean = false,           // visual: card is the one being dragged
     dragOffset: Float = 0f,               // visual: pixels the card should offset by
+    draggedCode: String? = null,          // the code of the card being dragged
+    dragSourceIndex: Int = -1,            // original index of the dragged card
+    dragTargetIndex: Int = -1,            // visual insertion index for gap effect
     modifier: Modifier = Modifier
 ) {
     val busStopCode = stop.busStop.code
@@ -112,21 +118,38 @@ fun BusStopCard(
     val haptic = LocalHapticFeedback.current
     val dragDensity = LocalDensity.current
     val viewConfiguration = LocalViewConfiguration.current
+    val itemHeightPx = with(dragDensity) { 140.dp.toPx() }
     var localDragOffset by remember { mutableStateOf(0f) }
     var isLocallyDragged by remember { mutableStateOf(false) }
     var collapsedForDrag by remember { mutableStateOf(false) }
     val visuallyDragged = isDragged || isLocallyDragged
     val effectiveOffset = if (isDragged) dragOffset else localDragOffset
+    // Gap shift: when another card is being dragged, cards between source and target shift to make room
+    val gapShift = if (draggedCode != null && draggedCode != busStopCode && dragTargetIndex >= 0) {
+        // sourceIndex is this card's position
+        // dragSourceIdx is where the dragged card started (derived from draggedCode's position)
+        // dragTargetIndex is where it's being inserted
+        if (sourceIndex > dragSourceIndex && sourceIndex <= dragTargetIndex) {
+            -itemHeightPx  // dragging DOWN: cards between shift UP to open gap
+        } else if (sourceIndex < dragSourceIndex && sourceIndex >= dragTargetIndex) {
+            itemHeightPx   // dragging UP: cards between shift DOWN to open gap
+        } else 0f
+    } else 0f
+    val needTranslation = visuallyDragged || gapShift != 0f
+    val totalTranslationY = if (visuallyDragged) effectiveOffset + gapShift else gapShift
     val effectiveCollapsed = collapsedForDrag || isCollapsed
 
     Card(
         modifier = modifier
             .fillMaxWidth()
             .then(
-                if (visuallyDragged) Modifier
-                    .zIndex(1f)
-                    .graphicsLayer { translationY = effectiveOffset }
-                    .shadow(12.dp, RoundedCornerShape(20.dp))
+                if (needTranslation) Modifier
+                    .zIndex(if (visuallyDragged) 1f else 0f)
+                    .graphicsLayer { translationY = totalTranslationY }
+                    .then(
+                        if (visuallyDragged) Modifier.shadow(12.dp, RoundedCornerShape(20.dp))
+                        else Modifier
+                    )
                 else Modifier
             ),
         shape = RoundedCornerShape(20.dp),
@@ -139,7 +162,6 @@ fun BusStopCard(
     ) {
     Column {
             // ── Header background (pinned = blue pill, unpinned = none) ──
-            val itemHeightPx = with(dragDensity) { 140.dp.toPx() }
             Row(
                 modifier = (if (isPinned) Modifier
                     .fillMaxWidth()
@@ -172,20 +194,16 @@ fun BusStopCard(
                                         val delta = change.position - change.previousPosition
                                         totalY += delta.y
                                         localDragOffset = totalY
-                                        while (kotlin.math.abs(totalY) >= itemHeightPx) {
-                                            val dir = if (totalY > 0) 1 else -1
-                                            onMoveStop!!(dir)
-                                            totalY -= dir * itemHeightPx
-                                            localDragOffset = totalY
-                                        }
+                                        // Report drag position to MainScreen for gap effect
+                                        onDragUpdate?.invoke(busStopCode, totalY)
                                         if (event.type == PointerEventType.Release) break
                                     }
-                                    // Drag ended
+                                    // Drag ended — parent handles both delete and reorder
+                                    onDragEnd?.invoke(busStopCode, totalY)
                                     isLocallyDragged = false
                                     localDragOffset = 0f
                                     collapsedForDrag = false
-                                    val delta = (totalY / itemHeightPx).toInt()
-                                    if (delta != 0) onMoveStop!!(delta)
+                                    onDragUpdate?.invoke(busStopCode, 0f)  // clear drag state
                                 }
                             }
                         } else Modifier.pointerInput(onToggleCollapse, onDelete) {
