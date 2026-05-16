@@ -127,15 +127,14 @@ fun BusStopCard(
         elevation = CardDefaults.cardElevation(defaultElevation = if (visuallyDragged) 12.dp else 3.dp)
     ) {
     Column(modifier = Modifier.padding(horizontal = 16.dp)) {
-            // Blue accent bar at top of card
-            Box(Modifier.fillMaxWidth().height(2.dp).background(MaterialTheme.colorScheme.primary))
-            // Blue drop indicator when dragging
             if (isLocallyDragged && kotlin.math.abs(localDragOffset) > 20) {
                 Box(Modifier.fillMaxWidth().height(3.dp).background(MaterialTheme.colorScheme.primary))
             }
             Row(
                 modifier = Modifier
                     .fillMaxWidth()
+                    .clip(RoundedCornerShape(topStart = 20.dp, topEnd = 20.dp))
+                    .background(MaterialTheme.colorScheme.primaryContainer)
                     .pointerInput(onToggleCollapse, onDelete, onMoveStop) {
                         detectTapGestures(
                             onTap = { onToggleCollapse() },
