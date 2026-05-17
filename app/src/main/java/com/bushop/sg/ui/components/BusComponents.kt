@@ -15,8 +15,8 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.combinedClickable
-import androidx.compose.foundation.gestures.awaitEachGesture
-import androidx.compose.foundation.gestures.awaitFirstDown
+import androidx.compose.foundation.gestures.detectDragGesturesAfterLongPress
+import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.material.icons.filled.Chair
 import androidx.compose.material.icons.filled.DirectionsBus
 import androidx.compose.material.icons.outlined.DirectionsBus
@@ -75,17 +75,15 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.input.pointer.pointerInput
-import androidx.compose.ui.input.pointer.positionChange
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.hapticfeedback.HapticFeedbackType
 import androidx.compose.ui.platform.LocalHapticFeedback
-import androidx.compose.foundation.gestures.awaitLongPressOrCancellation
 import androidx.compose.ui.window.Popup
 import com.bushop.sg.domain.model.BusService
 import com.bushop.sg.domain.model.BusStopWithArrivals
 import com.bushop.sg.domain.model.toDisplayArrival
 
-@OptIn(ExperimentalLayoutApi::class)
+@OptIn(ExperimentalLayoutApi::class, ExperimentalFoundationApi::class)
 @Composable
 fun BusStopCard(
     stop: BusStopWithArrivals,
@@ -162,62 +160,49 @@ fun BusStopCard(
                     .then(
                         if (onMoveStop != null) {
                             Modifier
+                                .combinedClickable(
+                                    onClick = onToggleCollapse,
+                                    onLongClick = {}
+                                )
                                 .pointerInput(busStopCode, isCollapsed, onMoveStop) {
-                                    awaitEachGesture {
-                                        val down = awaitFirstDown(requireUnconsumed = false)
-                                        val longPress = awaitLongPressOrCancellation(down.id)
-
-                                        if (longPress == null) {
-                                            onToggleCollapse()
-                                            return@awaitEachGesture
-                                        }
-
-                                        var totalY = 0f
-                                        isLocallyDragged = true
-                                        localDragOffset = 0f
-                                        if (!isCollapsed) collapsedForDrag = true
-                                        haptic.performHapticFeedback(HapticFeedbackType.LongPress)
-                                        onDragStart?.invoke(busStopCode)
-
-                                        try {
-                                            while (true) {
-                                                val event = awaitPointerEvent()
-                                                val change = event.changes.firstOrNull { it.id == down.id }
-                                                    ?: event.changes.firstOrNull()
-                                                    ?: break
-
-                                                if (!change.pressed) break
-
-                                                val deltaY = change.positionChange().y
-                                                if (deltaY != 0f) {
-                                                    totalY += deltaY
-                                                    localDragOffset = totalY
-                                                    onDragProgress?.invoke(
-                                                        busStopCode,
-                                                        totalY,
-                                                        cardCenterYInRoot + totalY
-                                                    )
-                                                    change.consume()
-                                                }
-                                            }
-                                        } finally {
+                                    var totalY = 0f
+                                    detectDragGesturesAfterLongPress(
+                                        onDragStart = {
+                                            totalY = 0f
+                                            isLocallyDragged = true
+                                            localDragOffset = 0f
+                                            if (!isCollapsed) collapsedForDrag = true
+                                            haptic.performHapticFeedback(HapticFeedbackType.LongPress)
+                                            onDragStart?.invoke(busStopCode)
+                                        },
+                                        onDrag = { change, dragAmount ->
+                                            change.consume()
+                                            totalY += dragAmount.y
+                                            localDragOffset = totalY
+                                            onDragProgress?.invoke(
+                                                busStopCode,
+                                                totalY,
+                                                cardCenterYInRoot + totalY
+                                            )
+                                        },
+                                        onDragEnd = {
                                             onDragEnd?.invoke(busStopCode, totalY)
                                             isLocallyDragged = false
                                             localDragOffset = 0f
                                             collapsedForDrag = false
+                                        },
+                                        onDragCancel = {
+                                            isLocallyDragged = false
+                                            localDragOffset = 0f
+                                            collapsedForDrag = false
                                         }
-                                    }
+                                    )
                                 }
                         } else Modifier.pointerInput(onToggleCollapse, onDelete) {
-                            awaitEachGesture {
-                                val down = awaitFirstDown(requireUnconsumed = false)
-                                val longPress = awaitLongPressOrCancellation(down.id)
-                                if (longPress == null) {
-                                    onToggleCollapse()
-                                } else {
-                                    onDelete()
-                                }
-                            }
+                            detectTapGestures(
+                                onTap = { onToggleCollapse() },
+                                onLongPress = { onDelete() }
+                            )
                         }
                     ),
                 horizontalArrangement = Arrangement.SpaceBetween,
