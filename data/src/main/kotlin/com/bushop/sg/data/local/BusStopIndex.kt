@@ -4,8 +4,8 @@ import android.content.Context
 import com.google.gson.Gson
 import com.google.gson.reflect.TypeToken
 import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.flow.MutableStateFlow
 import kotlin.math.pow
+import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.withContext
@@ -20,38 +20,109 @@ data class BusStopEntry(
     val displayName: String get() = if (name.isNotBlank()) "$name, $road" else code
 }
 
+/**
+ * In-memory index of all Singapore bus stops.
+ *
+ * Search uses a 3-stage filter cascade for maximum speed:
+ *   Stage 1 — Inverted index (name + road tokens) → O(1) candidate lookup
+ *   Stage 2 — Length filter + character-frequency pre-check → cheap skip before Levenshtein
+ *   Stage 3 — Full token matching with typo-tolerant Levenshtein
+ *
+ * Abbreviations expanded: bt→bukit, blk→block, int→interchange, amk→ang mo kio, cck→choa chu kang, etc.
+ */
 class BusStopIndex(private val context: Context) {
+
+    private val abbreviationMap = mapOf(
+        "bt" to "bukit", "bkt" to "bukit",
+        "blk" to "block",
+        "int" to "interchange",
+        "opp" to "opposite",
+        "ave" to "avenue",
+        "rd" to "road",
+        "dr" to "drive",
+        "st" to "street",
+        "ctr" to "centre",
+        "ctrl" to "central",
+        "jln" to "jalan",
+        "lor" to "lorong",
+        "nth" to "north",
+        "sth" to "south",
+        "wst" to "west",
+        "tpy" to "toa payoh",
+        "amk" to "ang mo kio",
+        "cck" to "choa chu kang",
+        "sbw" to "sembawang",
+        "pgl" to "punggol",
+        "sgo" to "sengkang",
+        "bp" to "bukit panjang",
+        "pjs" to "panjang",
+    )
 
     @Volatile
     private var stops: Map<String, BusStopEntry> = emptyMap()
 
+    private data class IndexedStop(
+        val entry: BusStopEntry,
+        val nameTokens: List<String>,
+        val expandedNameTokens: List<String>,
+        val roadTokens: List<String>,
+        val expandedRoadTokens: List<String>,
+        val codeLower: String
+    )
+    private var indexedStops: List<IndexedStop> = emptyList()
+
+    /** Inverted index: name token → list of stop indices containing that token in name. */
+    private var nameTokenIndex: Map<String, List<Int>> = emptyMap()
+    /** Inverted index: road token → stop indices containing that token in road. */
+    private var roadTokenIndex: Map<String, List<Int>> = emptyMap()
+
     private val _isReady = MutableStateFlow(false)
     val isReady: StateFlow<Boolean> = _isReady.asStateFlow()
 
-    init { /* empty — parsing is done in load() */ }
-
-    /** Test-only: inject stops without loading from assets. */
     fun setTestData(testStops: List<BusStopEntry>) {
         stops = testStops.associateBy { it.code }
+        indexedStops = testStops.map { it.toIndexed() }
+        nameTokenIndex = buildTokenIndex { it.nameTokens }
+        roadTokenIndex = buildTokenIndex { it.roadTokens }
         _isReady.value = true
     }
 
-    /** Load and parse the JSON on [Dispatchers.IO]. Safe to call multiple times. */
+    private fun expandAbbrev(token: String): String =
+        abbreviationMap[token] ?: token
+
+    private fun tokenise(text: String): List<String> =
+        text.lowercase().split(Regex("""[\s,./()&'\-]+""")).filter { it.isNotEmpty() }
+
+    private fun BusStopEntry.toIndexed(): IndexedStop {
+        val nTok = tokenise(name)
+        val rTok = if (road.isNotBlank()) tokenise(road) else emptyList()
+        return IndexedStop(
+            entry = this,
+            nameTokens = nTok,
+            expandedNameTokens = nTok.map { expandAbbrev(it) },
+            roadTokens = rTok,
+            expandedRoadTokens = rTok.map { expandAbbrev(it) },
+            codeLower = code.lowercase()
+        )
+    }
+
+    private fun buildTokenIndex(tokenSelector: (IndexedStop) -> List<String>): Map<String, List<Int>> {
+        val map = mutableMapOf<String, MutableList<Int>>()
+        for ((i, idx) in indexedStops.withIndex()) {
+            for (t in tokenSelector(idx)) {
+                map.getOrPut(t) { mutableListOf() }.add(i)
+            }
+        }
+        return map
+    }
+
     suspend fun load() {
         withContext(Dispatchers.IO) {
             val json = try {
-                context.assets.open("bus_stops.json")
-                    .bufferedReader()
-                    .use { it.readText() }
-            } catch (e: Exception) {
-                "{}"
-            }
+                context.assets.open("bus_stops.json").bufferedReader().use { it.readText() }
+            } catch (e: Exception) { "{}" }
             val type = object : TypeToken<Map<String, List<Any>>>() {}.type
-            val raw: Map<String, List<Any>> = try {
-                Gson().fromJson(json, type) ?: emptyMap()
-            } catch (e: Exception) {
-                emptyMap()
-            }
+            val raw: Map<String, List<Any>> = try { Gson().fromJson(json, type) ?: emptyMap() } catch (e: Exception) { emptyMap() }
             val parsed = raw.mapNotNull { (code, data) ->
                 if (data.size >= 3) {
                     val name = data[2].toString().trim()
@@ -62,80 +133,200 @@ class BusStopIndex(private val context: Context) {
                 } else null
             }
             stops = parsed.associateBy { it.code }
+            indexedStops = parsed.map { it.toIndexed() }
+            nameTokenIndex = buildTokenIndex { it.nameTokens }
+            roadTokenIndex = buildTokenIndex { it.roadTokens }
         }
         _isReady.value = true
     }
 
-    /** Levenshtein distance for typo-tolerant matching (max 2 edits checked). */
+    // ── Stage 2 filters (pre-Levenshtein) ──
+
+    /** Skip levenshtein when string lengths differ by more than the limit. */
+    private fun lengthFilter(a: String, b: String, limit: Int): Boolean =
+        kotlin.math.abs(a.length - b.length) <= limit
+
+    /** Quick character-frequency pre-check: at least half the query chars must appear in target. */
+    private fun charFilter(query: String, target: String): Boolean {
+        if (query.length < 3) return true  // too short to filter reliably
+        val qChars = query.toCharArray().distinct()
+        val tLower = target.lowercase()
+        val matchCount = qChars.count { tLower.contains(it) }
+        return matchCount >= (qChars.size + 1) / 2  // majority must match
+    }
+
+    // ── Levenshtein with 3 optimisations: row-min exit, length filter, char filter ──
+
     private fun levenshtein(s1: String, s2: String, limit: Int = 2): Int {
-        if (kotlin.math.abs(s1.length - s2.length) > limit) return limit + 1
+        // Stage 2a: length filter
+        if (!lengthFilter(s1, s2, limit)) return limit + 1
+        if (s1 == s2) return 0
+        // Stage 2b: character frequency quick-check
+        if (!charFilter(s1, s2)) return limit + 1
+
+        // Stage 3: full DP matrix with row-min early exit
         val dp = Array(s1.length + 1) { IntArray(s2.length + 1) }
         for (i in 0..s1.length) dp[i][0] = i
         for (j in 0..s2.length) dp[0][j] = j
         for (i in 1..s1.length) {
+            var rowMin = Int.MAX_VALUE
+            val si = s1[i - 1]
             for (j in 1..s2.length) {
-                val cost = if (s1[i - 1] == s2[j - 1]) 0 else 1
+                val cost = if (si == s2[j - 1]) 0 else 1
                 dp[i][j] = minOf(dp[i - 1][j] + 1, dp[i][j - 1] + 1, dp[i - 1][j - 1] + cost)
+                if (dp[i][j] < rowMin) rowMin = dp[i][j]
             }
-            if (dp[i].min() > limit) return limit + 1  // early exit
+            if (rowMin > limit) return limit + 1
         }
         return dp[s1.length][s2.length]
     }
 
-    /** Tokenise a string into lowercase search tokens. */
-    private fun tokenise(text: String): List<String> =
-        text.lowercase().split(Regex("""[\s,./()&]+""")).filter { it.isNotEmpty() }
+    // ── Query preparation ──
 
-    /** Returns empty results if index hasn't loaded yet. */
+    private data class QueryToken(
+        val raw: String,
+        val expanded: String,
+        val expandedSubs: List<String>
+    )
+
+    private fun prepareQueryTokens(q: String): List<QueryToken> =
+        q.split(Regex("""\s+""")).filter { it.isNotEmpty() }.map { t ->
+            val exp = expandAbbrev(t)
+            QueryToken(t, exp, if (exp.contains(' ')) tokenise(exp) else listOf(exp))
+        }
+
+    // ── Token matching ──
+
+    private fun matchToken(qt: QueryToken, rawTokens: List<String>, expandedTokens: List<String>): Int {
+        if (qt.raw in rawTokens || qt.expanded in expandedTokens) return 1000
+
+        val candidates = rawTokens + expandedTokens
+        for (t in candidates) {
+            when {
+                t.startsWith(qt.raw) || t.startsWith(qt.expanded) -> return 800
+                qt.raw.startsWith(t) && t.length >= 2 -> return 600
+                t.contains(qt.raw) || t.contains(qt.expanded) -> return 400
+                qt.raw.contains(t) && t.length >= 2 -> return 300
+            }
+        }
+
+        // Multi-word abbreviation: match any expansion sub-token
+        if (qt.expandedSubs.size > 1) {
+            for (sub in qt.expandedSubs) {
+                if (sub.length < 2) continue
+                for (t in candidates) {
+                    if (t.length >= 2 && (t == sub || t.startsWith(sub) || sub.startsWith(t))) return 400
+                }
+            }
+        }
+
+        // Fuzzy: Levenshtein with optimised pre-checks
+        for (t in candidates) {
+            val limit = if (t.length >= 6) 2 else 1
+            if (qt.raw.length >= 3 && levenshtein(t, qt.raw, limit) <= limit) return 250
+            if (qt.expanded.length >= 3 && levenshtein(t, qt.expanded, limit) <= limit) return 220
+        }
+
+        return 0
+    }
+
+    /** Collect candidate stop indices from both name and road inverted indexes. */
+    private fun collectCandidates(qt: QueryToken): Set<Int> {
+        val set = mutableSetOf<Int>()
+
+        fun addFromIndex(index: Map<String, List<Int>>, key: String) {
+            index[key]?.let { set.addAll(it) }
+        }
+
+        // Exact token matches
+        addFromIndex(nameTokenIndex, qt.raw)
+        addFromIndex(roadTokenIndex, qt.raw)
+        if (qt.expanded != qt.raw) {
+            addFromIndex(nameTokenIndex, qt.expanded)
+            addFromIndex(roadTokenIndex, qt.expanded)
+        }
+
+        // Prefix matches on name tokens
+        for ((token, indices) in nameTokenIndex) {
+            if (token.length < 2) continue
+            if (token != qt.raw && token != qt.expanded &&
+                (token.startsWith(qt.raw) || (qt.raw.startsWith(token) && token.length >= 2) ||
+                 token.startsWith(qt.expanded) || (qt.expanded.startsWith(token) && token.length >= 2))) {
+                set.addAll(indices)
+            }
+        }
+
+        // Prefix matches on road tokens
+        for ((token, indices) in roadTokenIndex) {
+            if (token.length < 2) continue
+            if (token != qt.raw && token != qt.expanded &&
+                (token.startsWith(qt.raw) || (qt.raw.startsWith(token) && token.length >= 2) ||
+                 token.startsWith(qt.expanded) || (qt.expanded.startsWith(token) && token.length >= 2))) {
+                set.addAll(indices)
+            }
+        }
+
+        return set
+    }
+
+    private fun qtInName(qt: QueryToken, nameTokens: List<String>): Boolean {
+        for (t in nameTokens) {
+            if (t.startsWith(qt.raw) || t.contains(qt.raw) ||
+                t.startsWith(qt.expanded) || t.contains(qt.expanded) ||
+                (qt.raw.contains(t) && t.length >= 2)) return true
+        }
+        for (sub in qt.expandedSubs) {
+            if (sub.length < 2) continue
+            for (t in nameTokens) {
+                if (t.length >= 2 && (t.startsWith(sub) || sub.startsWith(t))) return true
+            }
+        }
+        return false
+    }
+
+    // ── Main search ──
+
     fun search(query: String): List<BusStopEntry> {
         val q = query.trim().lowercase()
         if (q.length < 1 || stops.isEmpty()) return emptyList()
 
-        data class Scored(val entry: BusStopEntry, val score: Int)
+        val queryTokens = prepareQueryTokens(q)
 
-        // Always search names; codes get a small bonus for backtracking
-        val queryTokens = q.split(Regex("""\s+""")).filter { it.isNotEmpty() }
+        // Fast path: single exact code match
+        if (queryTokens.size == 1) {
+            val exact = stops[queryTokens[0].raw.uppercase()]
+            if (exact != null) return listOf(exact)
+        }
 
-        val results = stops.values.mapNotNull { entry ->
-            val nameTokens = tokenise(entry.name)
-            val roadTokens = tokenise(entry.road)
-            val codeLower = entry.code.lowercase()
+        // Stage 1: collect candidates from name + road inverted indexes
+        val candidateSet = mutableSetOf<Int>()
+        for (qt in queryTokens) {
+            candidateSet.addAll(collectCandidates(qt))
+        }
+
+        // Score candidates (or all stops if no index hits)
+        val results = mutableListOf<Pair<BusStopEntry, Int>>()
+        val iterable = if (candidateSet.isNotEmpty()) candidateSet.map { indexedStops[it] } else indexedStops
+
+        for (idx in iterable) {
             var score = 0
             var matchedAny = false
 
             for (qt in queryTokens) {
-                var best = 0
+                var best = matchToken(qt, idx.nameTokens, idx.expandedNameTokens)
 
-                // ── Name matching (primary) ──
-                for (nt in nameTokens) {
-                    val s = when {
-                        nt == qt -> 1000
-                        nt.startsWith(qt) -> 800
-                        qt.startsWith(nt) -> 600
-                        nt.contains(qt) -> 400
-                        qt.contains(nt) -> 300
-                        qt.length >= 3 && levenshtein(nt, qt) <= 1 -> 250
+                if (best == 0 && idx.roadTokens.isNotEmpty()) {
+                    val rs = matchToken(qt, idx.roadTokens, idx.expandedRoadTokens)
+                    if (rs > 0) best = rs / 3
+                }
+
+                if (best == 0 && qt.raw.length >= 2) {
+                    best = when {
+                        idx.codeLower == qt.raw -> 50
+                        idx.codeLower.startsWith(qt.raw) -> 35
+                        idx.codeLower.contains(qt.raw) -> 10
                         else -> 0
                     }
-                    if (s > best) best = s
-                }
-
-                // ── Road matching (secondary — always lower than name) ──
-                if (best == 0) {
-                    for (rt in roadTokens) {
-                        val s = when {
-                            rt.startsWith(qt) -> 180
-                            rt.contains(qt) -> 80
-                            else -> 0
-                        }
-                        if (s > best) best = s
-                    }
-                }
-
-                // ── Code match (tiny bonus, never primary) ──
-                if (best == 0 && qt.length >= 2) {
-                    if (codeLower.startsWith(qt)) best = 40
-                    else if (codeLower.contains(qt)) best = 15
                 }
 
                 if (best > 0) {
@@ -144,26 +335,20 @@ class BusStopIndex(private val context: Context) {
                 }
             }
 
-            // Bonus: all tokens matched in name
-            if (queryTokens.isNotEmpty() && queryTokens.all { qt ->
-                    nameTokens.any { nt -> nt.startsWith(qt) || nt.contains(qt) || qt.contains(nt) }
-                }) {
-                score += 500
-            }
+            if (!matchedAny) continue
 
-            if (matchedAny) Scored(entry, score) else null
+            // All-tokens-match bonus (only for name matches, not road-only)
+            if (queryTokens.all { qtInName(it, idx.nameTokens) }) score += 500
+
+            results.add(idx.entry to score)
         }
 
-        return results
-            .sortedByDescending { it.score }
-            .take(20)
-            .map { it.entry }
+        results.sortByDescending { it.second }
+        return results.take(20).map { it.first }
     }
 
-    /** Returns null if index hasn't loaded yet. */
     fun findByCode(code: String): BusStopEntry? = stops[code]
 
-    /** Haversine distance in km between two lat/lng points. */
     private fun haversineKm(lat1: Double, lng1: Double, lat2: Double, lng2: Double): Double {
         val r = 6371.0
         val dLat = Math.toRadians(lat2 - lat1)
@@ -174,7 +359,6 @@ class BusStopIndex(private val context: Context) {
         return r * 2 * kotlin.math.atan2(kotlin.math.sqrt(a), kotlin.math.sqrt(1 - a))
     }
 
-    /** Find nearby bus stops within [radiusKm] of [lat]/[lng], sorted by distance. */
     fun findNearby(lat: Double, lng: Double, radiusKm: Double = 0.5): List<BusStopEntry> {
         data class WithDist(val entry: BusStopEntry, val dist: Double)
         return stops.values.mapNotNull { entry ->
