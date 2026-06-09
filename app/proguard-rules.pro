@@ -33,9 +33,9 @@
 # ── Gson reflection (TypeToken, data classes with fields) ──
 -keepattributes Signature, *Annotation*, EnclosingMethod, InnerClasses
 -keep class com.google.gson.reflect.TypeToken { *; }
--# Keep anonymous TypeToken subclasses with their full generic signature
+# Keep anonymous TypeToken subclasses with their full generic signature
 -keep class * extends com.google.gson.reflect.TypeToken { *; }
--# Prevent R8 from stripping generic type info from TypeToken anonymous classes
+# Prevent R8 from stripping generic type info from TypeToken anonymous classes
 -keepclassmembers,allowobfuscation class * {
     @com.google.gson.annotations.SerializedName <fields>;
 }
