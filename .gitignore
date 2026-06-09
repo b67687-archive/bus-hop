@@ -28,6 +28,9 @@ local.properties
 # Eclipse
 .classpath
 .project
+
+# Local development scripts (not used in CI)
+/scripts/
 .settings/
 
 # Android Studio

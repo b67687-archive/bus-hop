@@ -7,12 +7,12 @@ import androidx.datastore.preferences.core.edit
 import androidx.datastore.preferences.core.intPreferencesKey
 import androidx.datastore.preferences.core.stringPreferencesKey
 import androidx.datastore.preferences.preferencesDataStore
+import com.bushop.sg.data.api.GsonProvider
 import com.bushop.sg.domain.model.BusService
 import com.bushop.sg.domain.model.BusStop
 import com.bushop.sg.domain.model.ColorSchemeOption
 import com.bushop.sg.domain.model.DuplicateStopException
 import com.bushop.sg.domain.model.ThemeMode
-import com.google.gson.Gson
 import com.google.gson.reflect.TypeToken
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.Flow
@@ -34,7 +34,7 @@ class BusStopStorage(
         private val stringSetType = object : TypeToken<Set<String>>() {}.type
     }
 
-    private val gson = Gson()
+    private val gson = GsonProvider.gson
     private val busStopsKey = stringPreferencesKey("saved_bus_stops")
 
     val savedBusStops: Flow<List<BusStop>> =

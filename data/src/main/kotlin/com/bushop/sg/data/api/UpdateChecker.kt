@@ -1,6 +1,5 @@
 package com.bushop.sg.data.api
 
-import com.google.gson.Gson
 import com.google.gson.annotations.SerializedName
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
@@ -19,13 +18,8 @@ data class UpdateInfo(
 
 /** Checks GitHub releases and downloads APK updates. */
 class UpdateChecker {
-    private val client =
-        OkHttpClient
-            .Builder()
-            .connectTimeout(10, TimeUnit.SECONDS)
-            .readTimeout(15, TimeUnit.SECONDS)
-            .build()
-    private val gson = Gson()
+    private val client = ApiClient.okHttpClient
+    private val gson = GsonProvider.gson
     private val apiUrl = "https://api.github.com/repos/B67687/BusHop-SG/releases/latest"
 
     /** Fetch latest release info from GitHub. */
@@ -38,6 +32,9 @@ class UpdateChecker {
                         .url(apiUrl)
                         .header("Accept", "application/vnd.github.v3+json")
                         .build()
+                // Blocking call — runs on Dispatchers.IO via withContext above.
+                // OkHttp cancel() won't abort mid-request but cancellation is
+                // checked before the next retry attempt.
                 val response = client.newCall(request).execute()
                 val body = response.body?.string() ?: return@withContext null
                 val release = gson.fromJson(body, GitHubRelease::class.java)

@@ -471,6 +471,7 @@ class MainViewModel(
             if (idx == -1) return
             _savedStops.value =
                 _savedStops.value.toMutableList().apply {
+                    // Creates a new list + copies one element — acceptable for infrequent mutations
                     this[idx] = this[idx].copy(isLoading = true, error = null, isOffline = false)
                 }
         }
