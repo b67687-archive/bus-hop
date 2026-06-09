@@ -427,8 +427,7 @@ fun MainScreen(viewModel: MainViewModel) {
                                                 val hasMeasuredDeleteZone = deleteZoneTopPx.isFinite()
                                                 isDragOverDeleteZone =
                                                     if (hasMeasuredDeleteZone) {
-                                                        // Account for offset consumed by live reorder
-                                                        (draggedCenterY - dragOffsetAnchor) >= deleteZoneTopPx
+                                                        draggedCenterY >= deleteZoneTopPx
                                                     } else {
                                                         lastTotalY > (savedStops.size * dragItemHeightPx) + deleteZoneThresholdPx
                                                     }
