@@ -383,7 +383,12 @@ fun MainScreen(viewModel: MainViewModel) {
                                     key = { it.busStop.code },
                                 ) { stopWithArrivals ->
                                     BusStopCard(
-                                        modifier = Modifier.animateItem(),
+                                        modifier =
+                                            if (draggedCode != stopWithArrivals.busStop.code) {
+                                                Modifier.animateItem()
+                                            } else {
+                                                Modifier
+                                            },
                                         stop = stopWithArrivals,
                                         onRefresh = { viewModel.refreshArrivals(stopWithArrivals.busStop.code) },
                                         onToggleCollapse = { viewModel.toggleCollapse(stopWithArrivals.busStop.code) },

@@ -715,4 +715,69 @@ class MainViewModelTest {
     fun `savedStops is initially empty`() {
         assertTrue("Saved stops should be initially empty", viewModel.savedStops.value.isEmpty())
     }
+
+    // ── Live reorder (repeated moveStop during drag) ──
+
+    @Test
+    fun `moveStop called multiple times maintains correct order`() =
+        runTest(testDispatcher) {
+            savedStopsFlow.value =
+                listOf(BusStop("11111"), BusStop("22222"), BusStop("33333"), BusStop("44444"))
+            advanceUntilIdle()
+
+            // Simulate live reorder: move 22222 down 1 position, then 1 more
+            viewModel.moveStop("22222", 1)
+            advanceUntilIdle()
+            var codes = viewModel.savedStops.value.map { it.busStop.code }
+            assertEquals(listOf("11111", "33333", "22222", "44444"), codes)
+
+            viewModel.moveStop("22222", 1)
+            advanceUntilIdle()
+            codes = viewModel.savedStops.value.map { it.busStop.code }
+            assertEquals(listOf("11111", "33333", "44444", "22222"), codes)
+        }
+
+    @Test
+    fun `moveStop repeatedly in opposite direction reverses the order`() =
+        runTest(testDispatcher) {
+            savedStopsFlow.value =
+                listOf(BusStop("11111"), BusStop("22222"), BusStop("33333"), BusStop("44444"))
+            advanceUntilIdle()
+
+            // Move 33333 up 1 position, then down 1 → back to original
+            viewModel.moveStop("33333", -1)
+            advanceUntilIdle()
+            var codes = viewModel.savedStops.value.map { it.busStop.code }
+            assertEquals(listOf("11111", "33333", "22222", "44444"), codes)
+
+            viewModel.moveStop("33333", 1)
+            advanceUntilIdle()
+            codes = viewModel.savedStops.value.map { it.busStop.code }
+            assertEquals(listOf("11111", "22222", "33333", "44444"), codes)
+        }
+
+    @Test
+    fun `moveStop large delta does not go out of bounds`() =
+        runTest(testDispatcher) {
+            savedStopsFlow.value = listOf(BusStop("11111"), BusStop("22222"))
+            advanceUntilIdle()
+
+            // Move 11111 down by 99 (way past end) → should clamp to last position
+            viewModel.moveStop("11111", 99)
+            advanceUntilIdle()
+            val codes = viewModel.savedStops.value.map { it.busStop.code }
+            assertEquals(listOf("22222", "11111"), codes)
+        }
+
+    @Test
+    fun `moveStop with delta zero does nothing`() =
+        runTest(testDispatcher) {
+            savedStopsFlow.value = listOf(BusStop("11111"), BusStop("22222"))
+            advanceUntilIdle()
+
+            viewModel.moveStop("11111", 0)
+            advanceUntilIdle()
+            val codes = viewModel.savedStops.value.map { it.busStop.code }
+            assertEquals(listOf("11111", "22222"), codes)
+        }
 }
