@@ -9,24 +9,29 @@ import retrofit2.converter.gson.GsonConverterFactory
 
 /** Data source backed by LTA DataMall BusArrivalv2 API. */
 class LtaBusArrivalDataSource(
-    private val apiKey: String
+    private val apiKey: String,
 ) : BusArrivalDataSource {
-
     private val api: LtaDataMallApi by lazy {
-        val logging = HttpLoggingInterceptor().apply {
-            level = HttpLoggingInterceptor.Level.BASIC
-        }
-        val client = OkHttpClient.Builder()
-            .addInterceptor { chain ->
-                val request = chain.request().newBuilder()
-                    .addHeader("AccountKey", apiKey)
-                    .build()
-                chain.proceed(request)
+        val logging =
+            HttpLoggingInterceptor().apply {
+                level = HttpLoggingInterceptor.Level.BASIC
             }
-            .addInterceptor(logging)
-            .build()
+        val client =
+            OkHttpClient
+                .Builder()
+                .addInterceptor { chain ->
+                    val request =
+                        chain
+                            .request()
+                            .newBuilder()
+                            .addHeader("AccountKey", apiKey)
+                            .build()
+                    chain.proceed(request)
+                }.addInterceptor(logging)
+                .build()
 
-        Retrofit.Builder()
+        Retrofit
+            .Builder()
             .baseUrl("https://datamall.lta.gov.sg/ltaodataservice/")
             .client(client)
             .addConverterFactory(GsonConverterFactory.create())

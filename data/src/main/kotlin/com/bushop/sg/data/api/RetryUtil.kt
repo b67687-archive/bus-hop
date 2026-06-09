@@ -10,7 +10,7 @@ import kotlinx.coroutines.delay
 suspend fun <T> retrySuspend(
     maxRetries: Int = 2,
     initialDelayMs: Long = 1000,
-    block: suspend () -> Result<T>
+    block: suspend () -> Result<T>,
 ): Result<T> {
     var lastError: Throwable? = null
     repeat(maxRetries + 1) { attempt ->

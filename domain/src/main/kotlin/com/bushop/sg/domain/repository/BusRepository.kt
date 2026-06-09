@@ -20,14 +20,24 @@ interface BusRepository {
     val autoRefreshInterval: Flow<Int>
 
     suspend fun getAutoRefreshIntervalOnce(): Int
+
     suspend fun setAutoRefreshInterval(seconds: Int)
+
     suspend fun setThemeMode(mode: ThemeMode)
+
     suspend fun setColorSchemeOption(option: ColorSchemeOption)
+
     suspend fun setCollapsedStops(stops: Set<String>)
+
     val pinnedServicesFlow: Flow<Set<String>>
+
     suspend fun savePinnedServices(pinned: Set<String>)
+
     suspend fun addBusStop(stop: BusStop): Result<Unit>
+
     suspend fun removeBusStop(code: String)
+
     suspend fun reorderStops(stops: List<BusStop>)
+
     suspend fun getBusArrivals(busStopCode: String): NetworkResult<List<BusService>>
 }

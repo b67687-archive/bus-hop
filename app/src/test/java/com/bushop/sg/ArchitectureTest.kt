@@ -13,7 +13,6 @@ import java.io.File
  * Rule violations fail the test with a descriptive message.
  */
 class ArchitectureTest {
-
     private val projectRoot: File by lazy {
         val cwd = File(System.getProperty("user.dir") ?: ".")
         val candidates = listOf(cwd, cwd.parentFile).filterNotNull()
@@ -30,9 +29,13 @@ class ArchitectureTest {
     fun `domain module does not import android or androidx`() {
         val violations = mutableListOf<String>()
 
-        val domainDirs = listOf(
-            "model", "api", "repository", "usecase"
-        )
+        val domainDirs =
+            listOf(
+                "model",
+                "api",
+                "repository",
+                "usecase",
+            )
 
         val domainRoot = File(projectRoot, "domain/src/main/kotlin/com/bushop/sg/domain")
 
@@ -60,7 +63,7 @@ class ArchitectureTest {
                 appendLine("domain/ module must not import android.* or androidx.*:")
                 violations.forEach { appendLine("  $it") }
             },
-            violations.isEmpty()
+            violations.isEmpty(),
         )
     }
 
@@ -71,15 +74,16 @@ class ArchitectureTest {
         val buildFile = File(projectRoot, "app/build.gradle.kts")
         val content = buildFile.readText()
 
-        val releaseBlock = Regex(
-            """release\s*\{(.*?)\}""",
-            setOf(RegexOption.DOT_MATCHES_ALL, RegexOption.MULTILINE)
-        ).find(content)
+        val releaseBlock =
+            Regex(
+                """release\s*\{(.*?)\}""",
+                setOf(RegexOption.DOT_MATCHES_ALL, RegexOption.MULTILINE),
+            ).find(content)
 
         Assert.assertNotNull("Could not find 'release' block in app/build.gradle.kts", releaseBlock)
         Assert.assertTrue(
             "release block must contain 'isMinifyEnabled = true', found:\n${releaseBlock!!.value}",
-            releaseBlock.value.contains("isMinifyEnabled = true")
+            releaseBlock.value.contains("isMinifyEnabled = true"),
         )
     }
 
@@ -90,23 +94,27 @@ class ArchitectureTest {
         val buildFile = File(projectRoot, "app/build.gradle.kts")
         val content = buildFile.readLines()
 
-        val hardcodedPattern = Regex(
-            """implementation\(["'](androidx|com\.squareup|org\.jetbrains|junit)""",
-            RegexOption.IGNORE_CASE
-        )
+        val hardcodedPattern =
+            Regex(
+                """implementation\(["'](androidx|com\.squareup|org\.jetbrains|junit)""",
+                RegexOption.IGNORE_CASE,
+            )
 
-        val violations = content.mapIndexedNotNull { idx, line ->
-            if (hardcodedPattern.containsMatchIn(line.trim())) {
-                "line ${idx + 1}: ${line.trim()}"
-            } else null
-        }
+        val violations =
+            content.mapIndexedNotNull { idx, line ->
+                if (hardcodedPattern.containsMatchIn(line.trim())) {
+                    "line ${idx + 1}: ${line.trim()}"
+                } else {
+                    null
+                }
+            }
 
         Assert.assertTrue(
             buildString {
                 appendLine("Found hardcoded dependency strings — use libs.* instead:")
                 violations.forEach { appendLine("  $it") }
             },
-            violations.isEmpty()
+            violations.isEmpty(),
         )
     }
 
@@ -126,16 +134,17 @@ class ArchitectureTest {
                 val match = pattern.find(trimmed)
                 if (match != null) {
                     val classSpec = match.groupValues[1]
-                    val packagePart = classSpec
-                        .removePrefix("class ")
-                        .removeSuffix(".**")
-                        .removeSuffix(".*")
-                        .replace('.', '/')
+                    val packagePart =
+                        classSpec
+                            .removePrefix("class ")
+                            .removeSuffix(".**")
+                            .removeSuffix(".*")
+                            .replace('.', '/')
                     val domainDir = File(projectRoot, "domain/src/main/kotlin/$packagePart")
                     val dataDir = File(projectRoot, "data/src/main/kotlin/$packagePart")
                     val appDir = File(projectRoot, "app/src/main/kotlin/$packagePart")
                     if (!domainDir.exists() && !dataDir.exists() && !appDir.exists()) {
-                        violations.add("'${trimmed}' — package '$packagePart' not found in any module")
+                        violations.add("'$trimmed' — package '$packagePart' not found in any module")
                     }
                 }
             }
@@ -145,7 +154,7 @@ class ArchitectureTest {
                 appendLine("ProGuard -keep rules reference non-existent packages:")
                 violations.forEach { appendLine("  $it") }
             },
-            violations.isEmpty()
+            violations.isEmpty(),
         )
     }
 }

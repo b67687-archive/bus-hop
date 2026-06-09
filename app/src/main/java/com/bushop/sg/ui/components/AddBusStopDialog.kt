@@ -28,12 +28,12 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
-import kotlinx.coroutines.delay
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import com.bushop.sg.data.local.BusStopEntry
+import kotlinx.coroutines.delay
 
 @Composable
 fun AddBusStopDialog(
@@ -47,7 +47,7 @@ fun AddBusStopDialog(
     nearbyStops: List<BusStopEntry> = emptyList(),
     isLoadingNearby: Boolean = false,
     nearbyError: String? = null,
-    onFindNearby: () -> Unit = {}
+    onFindNearby: () -> Unit = {},
 ) {
     var searchQuery by remember { mutableStateOf("") }
     var selectedEntry by remember { mutableStateOf<BusStopEntry?>(null) }
@@ -66,7 +66,10 @@ fun AddBusStopDialog(
 
     AlertDialog(
         onDismissRequest = {
-            if (confirmNearby != null) { confirmNearby = null; return@AlertDialog }
+            if (confirmNearby != null) {
+                confirmNearby = null
+                return@AlertDialog
+            }
             onDismiss()
         },
         title = {
@@ -84,11 +87,16 @@ fun AddBusStopDialog(
                 }
 
                 Text(
-                    text = if (selectedEntry != null) "Bus stop selected"
-                           else if (showNearbyHeader) "Nearby stops — tap to add"
-                           else "Search by code or name",
+                    text =
+                        if (selectedEntry != null) {
+                            "Bus stop selected"
+                        } else if (showNearbyHeader) {
+                            "Nearby stops — tap to add"
+                        } else {
+                            "Search by code or name"
+                        },
                     style = MaterialTheme.typography.bodyMedium,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
                 )
                 Spacer(modifier = Modifier.height(12.dp))
 
@@ -106,7 +114,7 @@ fun AddBusStopDialog(
                     enabled = !isLoading,
                     leadingIcon = {
                         Icon(imageVector = Icons.Default.Search, contentDescription = null, modifier = Modifier.size(20.dp))
-                    }
+                    },
                 )
 
                 // Nearby button
@@ -127,40 +135,67 @@ fun AddBusStopDialog(
                 // Results list
                 if (selectedEntry != null) {
                     Spacer(modifier = Modifier.height(8.dp))
-                    Text("Code: ${selectedEntry!!.code}\n${selectedEntry!!.displayName}", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                    Text(
+                        "Code: ${selectedEntry!!.code}\n${selectedEntry!!.displayName}",
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    )
                 } else if (activeResults.isNotEmpty()) {
                     Spacer(modifier = Modifier.height(8.dp))
                     if (showNearbyHeader) {
-                        Text("${activeResults.size} stops within ~500m", style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                        Text(
+                            "${activeResults.size} stops within ~500m",
+                            style = MaterialTheme.typography.labelSmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        )
                         Spacer(Modifier.height(4.dp))
                     }
                     LazyColumn(modifier = Modifier.fillMaxWidth().height(260.dp), verticalArrangement = Arrangement.spacedBy(2.dp)) {
                         items(activeResults) { entry ->
                             Row(
-                                modifier = Modifier.fillMaxWidth().clickable {
-                                    selectedEntry = entry
-                                    searchQuery = "${entry.code} - ${entry.name}"
-                                }.padding(horizontal = 8.dp, vertical = 8.dp),
+                                modifier =
+                                    Modifier
+                                        .fillMaxWidth()
+                                        .clickable {
+                                            selectedEntry = entry
+                                            searchQuery = "${entry.code} - ${entry.name}"
+                                        }.padding(horizontal = 8.dp, vertical = 8.dp),
                                 verticalAlignment = Alignment.CenterVertically,
-                                horizontalArrangement = Arrangement.SpaceBetween
+                                horizontalArrangement = Arrangement.SpaceBetween,
                             ) {
                                 Column(modifier = Modifier.weight(1f)) {
                                     Text(entry.name, style = MaterialTheme.typography.bodyMedium, fontWeight = FontWeight.Medium)
-                                    Text(entry.road, style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                                    Text(
+                                        entry.road,
+                                        style = MaterialTheme.typography.labelSmall,
+                                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                    )
                                 }
-                                Text(entry.code, style = MaterialTheme.typography.labelMedium, fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.primary)
+                                Text(
+                                    entry.code,
+                                    style = MaterialTheme.typography.labelMedium,
+                                    fontWeight = FontWeight.Bold,
+                                    color = MaterialTheme.colorScheme.primary,
+                                )
                             }
                         }
                     }
                 } else if (searchQuery.length >= 2 && searchResults.isEmpty() && !isLoading) {
                     Spacer(modifier = Modifier.height(8.dp))
-                    Text("No bus stops found. You can type a 5-digit code and press Add.", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                    Text(
+                        "No bus stops found. You can type a 5-digit code and press Add.",
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    )
                 }
             }
         },
         confirmButton = {
             if (confirmNearby != null) {
-                TextButton(onClick = { onConfirm(confirmNearby!!.code, confirmNearby!!.name); confirmNearby = null }) { Text("Yes, add stop") }
+                TextButton(onClick = {
+                    onConfirm(confirmNearby!!.code, confirmNearby!!.name)
+                    confirmNearby = null
+                }) { Text("Yes, add stop") }
             } else {
                 TextButton(
                     onClick = {
@@ -173,7 +208,7 @@ fun AddBusStopDialog(
                             onSearchQueryChanged(searchQuery)
                         }
                     },
-                    enabled = !isLoading && (selectedEntry != null || (searchQuery.length == 5 && searchQuery.all { it.isDigit() }))
+                    enabled = !isLoading && (selectedEntry != null || (searchQuery.length == 5 && searchQuery.all { it.isDigit() })),
                 ) {
                     if (isLoading) {
                         Row(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalAlignment = Alignment.CenterVertically) {
@@ -192,6 +227,6 @@ fun AddBusStopDialog(
             } else {
                 TextButton(onClick = onDismiss) { Text("Cancel") }
             }
-        }
+        },
     )
 }

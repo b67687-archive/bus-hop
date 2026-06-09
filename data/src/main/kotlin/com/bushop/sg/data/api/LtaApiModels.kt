@@ -10,7 +10,7 @@ import java.util.Locale
 // ── LTA DataMall API response DTOs ──
 
 data class LtaBusArrivalResponse(
-    @SerializedName("Services") val services: List<LtaService>?
+    @SerializedName("Services") val services: List<LtaService>?,
 )
 
 data class LtaService(
@@ -18,7 +18,7 @@ data class LtaService(
     @SerializedName("Operator") val operator: String,
     @SerializedName("NextBus") val nextBus: LtaBusArrival?,
     @SerializedName("NextBus2") val nextBus2: LtaBusArrival?,
-    @SerializedName("NextBus3") val nextBus3: LtaBusArrival?
+    @SerializedName("NextBus3") val nextBus3: LtaBusArrival?,
 )
 
 data class LtaBusArrival(
@@ -30,24 +30,24 @@ data class LtaBusArrival(
     @SerializedName("Feature") val feature: String?,
     @SerializedName("Type") val type: String?,
     @SerializedName("OriginCode") val originCode: String?,
-    @SerializedName("DestinationCode") val destinationCode: String?
+    @SerializedName("DestinationCode") val destinationCode: String?,
 )
 
 // ── Mappers to domain models ──
 
-fun LtaService.toBusService(): BusService {
-    return BusService(
+fun LtaService.toBusService(): BusService =
+    BusService(
         serviceNo = serviceNo,
         operator = operator,
         next = nextBus?.toBusInfo(),
         subsequent = nextBus2?.toBusInfo(),
-        next3 = nextBus3?.toBusInfo()
+        next3 = nextBus3?.toBusInfo(),
     )
-}
 
 fun LtaBusArrival.toBusInfo(): BusInfo {
-    val (timeText, durationMs) = estimatedArrival?.let { parseLtaEstimatedArrival(it) }
-        ?: Pair("", 0L)
+    val (timeText, durationMs) =
+        estimatedArrival?.let { parseLtaEstimatedArrival(it) }
+            ?: Pair("", 0L)
     return BusInfo(
         time = timeText,
         durationMs = durationMs,
@@ -58,7 +58,7 @@ fun LtaBusArrival.toBusInfo(): BusInfo {
         type = type ?: "",
         visitNumber = visitNumber?.toIntOrNull() ?: 0,
         originCode = originCode,
-        destinationCode = destinationCode
+        destinationCode = destinationCode,
     )
 }
 

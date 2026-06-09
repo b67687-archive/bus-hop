@@ -1,7 +1,7 @@
 package com.bushop.sg.domain.model
 
 data class BusArrivalResponse(
-    val services: List<BusService>?
+    val services: List<BusService>?,
 )
 
 data class BusService(
@@ -9,7 +9,7 @@ data class BusService(
     val operator: String,
     val next: BusInfo?,
     val subsequent: BusInfo?,
-    val next3: BusInfo?
+    val next3: BusInfo?,
 )
 
 data class BusInfo(
@@ -22,7 +22,7 @@ data class BusInfo(
     val type: String,
     val visitNumber: Int,
     val originCode: String?,
-    val destinationCode: String?
+    val destinationCode: String?,
 )
 
 fun BusInfo.toDisplayArrival(): DisplayArrival {
@@ -30,19 +30,21 @@ fun BusInfo.toDisplayArrival(): DisplayArrival {
     val etaText = if (durationMinutes < 1) "Arr." else "$durationMinutes min"
     return DisplayArrival(
         eta = etaText,
-        load = when (load) {
-            "SEA" -> "Seats Available"
-            "SDA" -> "Standing Available"
-            "LSD" -> "Limited Standing"
-            else -> load
-        },
+        load =
+            when (load) {
+                "SEA" -> "Seats Available"
+                "SDA" -> "Standing Available"
+                "LSD" -> "Limited Standing"
+                else -> load
+            },
         isWheelchairAccessible = feature == "WAB",
-        busType = when (type) {
-            "SD", "Single" -> "Single Decker"
-            "DD", "Double" -> "Double Decker"
-            "BD", "Bendy" -> "Bendy"
-            else -> type
-        }
+        busType =
+            when (type) {
+                "SD", "Single" -> "Single Decker"
+                "DD", "Double" -> "Double Decker"
+                "BD", "Bendy" -> "Bendy"
+                else -> type
+            },
     )
 }
 
@@ -50,5 +52,5 @@ data class DisplayArrival(
     val eta: String,
     val load: String,
     val isWheelchairAccessible: Boolean,
-    val busType: String
+    val busType: String,
 )

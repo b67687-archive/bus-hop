@@ -5,8 +5,10 @@ import com.bushop.sg.domain.model.BusStopWithArrivals
 
 /** Business logic for bus stop operations. */
 class BusStopUseCase {
-
-    fun sortServices(services: List<BusService>, sortByEarliest: Boolean): List<BusService> {
+    fun sortServices(
+        services: List<BusService>,
+        sortByEarliest: Boolean,
+    ): List<BusService> {
         if (!sortByEarliest) return services
         return services.sortedBy { service ->
             when {
@@ -20,7 +22,7 @@ class BusStopUseCase {
     fun sortServicesWithPins(
         services: List<BusService>,
         pinnedServiceNos: Set<String>,
-        sortByEarliest: Boolean
+        sortByEarliest: Boolean,
     ): List<BusService> {
         val (pinned, unpinned) = services.partition { it.serviceNo in pinnedServiceNos }
         val sortedPinned = sortServices(pinned, sortByEarliest)
@@ -32,17 +34,22 @@ class BusStopUseCase {
     fun applyPinning(
         stops: List<BusStopWithArrivals>,
         wasPinned: Boolean,
-        additionOrder: List<String>
+        additionOrder: List<String>,
     ): List<BusStopWithArrivals> {
         val pinned = stops.filter { it.isPinned }
         val unpinned = stops.filter { !it.isPinned }
         return if (wasPinned) {
             // Restore original order from additionOrder; fall back to unpinned order if empty
-            val order = if (additionOrder.isNotEmpty()) additionOrder
-                        else unpinned.map { it.busStop.code }
-            val sorted = order.mapNotNull { code ->
-                unpinned.find { it.busStop.code == code }
-            }
+            val order =
+                if (additionOrder.isNotEmpty()) {
+                    additionOrder
+                } else {
+                    unpinned.map { it.busStop.code }
+                }
+            val sorted =
+                order.mapNotNull { code ->
+                    unpinned.find { it.busStop.code == code }
+                }
             pinned + sorted
         } else {
             pinned + unpinned
@@ -51,20 +58,21 @@ class BusStopUseCase {
 
     fun toggleCollapsed(
         stops: List<BusStopWithArrivals>,
-        code: String
+        code: String,
     ): Pair<List<BusStopWithArrivals>, List<String>> {
         val index = stops.indexOfFirst { it.busStop.code == code }
         if (index == -1) return stops to collectCollapsedCodes(stops)
         val newCollapsed = !stops[index].isCollapsed
-        val updated = stops.toMutableList().apply {
-            this[index] = this[index].copy(isCollapsed = newCollapsed)
-        }
+        val updated =
+            stops.toMutableList().apply {
+                this[index] = this[index].copy(isCollapsed = newCollapsed)
+            }
         return updated to collectCollapsedCodes(updated)
     }
 
     fun collapseStop(
         stops: List<BusStopWithArrivals>,
-        code: String
+        code: String,
     ): Pair<List<BusStopWithArrivals>, Set<String>> {
         val index = stops.indexOfFirst { it.busStop.code == code }
         if (index == -1) {
@@ -74,24 +82,22 @@ class BusStopUseCase {
             return stops to collectCollapsedCodes(stops).toSet()
         }
 
-        val updated = stops.toMutableList().apply {
-            this[index] = this[index].copy(isCollapsed = true)
-        }
+        val updated =
+            stops.toMutableList().apply {
+                this[index] = this[index].copy(isCollapsed = true)
+            }
         return updated to collectCollapsedCodes(updated).toSet()
     }
 
     fun applyPersistedCollapsedState(
         stops: List<BusStopWithArrivals>,
-        collapsedStops: Set<String>
-    ): List<BusStopWithArrivals> {
-        return stops.map { stop ->
+        collapsedStops: Set<String>,
+    ): List<BusStopWithArrivals> =
+        stops.map { stop ->
             stop.copy(
-                isCollapsed = if (stop.busStop.code in collapsedStops) true else stop.isCollapsed
+                isCollapsed = if (stop.busStop.code in collapsedStops) true else stop.isCollapsed,
             )
         }
-    }
 
-    fun collectCollapsedCodes(stops: List<BusStopWithArrivals>): List<String> {
-        return stops.filter { it.isCollapsed }.map { it.busStop.code }
-    }
+    fun collectCollapsedCodes(stops: List<BusStopWithArrivals>): List<String> = stops.filter { it.isCollapsed }.map { it.busStop.code }
 }

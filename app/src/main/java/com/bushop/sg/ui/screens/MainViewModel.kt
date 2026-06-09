@@ -7,21 +7,23 @@ import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.ViewModelProvider
 import androidx.lifecycle.viewModelScope
-import com.bushop.sg.data.local.BusStopEntry
-import com.bushop.sg.data.local.BusStopIndex
-import com.bushop.sg.domain.model.DuplicateStopException
 import com.bushop.sg.BuildConfig
 import com.bushop.sg.data.api.UpdateChecker
 import com.bushop.sg.data.api.UpdateInfo
-import com.bushop.sg.domain.model.ColorSchemeOption
+import com.bushop.sg.data.local.BusStopEntry
+import com.bushop.sg.data.local.BusStopIndex
 import com.bushop.sg.domain.model.BusStop
 import com.bushop.sg.domain.model.BusStopWithArrivals
+import com.bushop.sg.domain.model.ColorSchemeOption
+import com.bushop.sg.domain.model.DuplicateStopException
 import com.bushop.sg.domain.model.NetworkResult
 import com.bushop.sg.domain.model.ThemeMode
 import com.bushop.sg.domain.repository.BusRepository
 import com.bushop.sg.domain.usecase.AutoRefreshController
 import com.bushop.sg.domain.usecase.BusStopUseCase
 import com.bushop.sg.domain.usecase.StopRefreshCoordinator
+import kotlinx.coroutines.CancellationException
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableSharedFlow
@@ -31,8 +33,6 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asSharedFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.combine
-import kotlinx.coroutines.CancellationException
-import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import java.io.File
 import java.io.IOException
@@ -45,9 +45,8 @@ class MainViewModel(
     private val repository: BusRepository,
     private val busStopIndex: BusStopIndex,
     private val useCase: BusStopUseCase = BusStopUseCase(),
-    private val refreshCoordinator: StopRefreshCoordinator = StopRefreshCoordinator()
+    private val refreshCoordinator: StopRefreshCoordinator = StopRefreshCoordinator(),
 ) : AndroidViewModel(application) {
-
     private var isAutoRefreshing = false
 
     private val autoRefreshController = AutoRefreshController(viewModelScope)
@@ -60,14 +59,14 @@ class MainViewModel(
 
     var addStopDialogVisible by mutableStateOf(false)
         private set
-    
+
     var addStopError by mutableStateOf<String?>(null)
         private set
 
     private var saveCollapseJob: Job? = null
     var autoRefreshIntervalSeconds by mutableStateOf(30)
         private set
-    
+
     private val _sortByEarliest = MutableStateFlow(false)
     val sortByEarliest: StateFlow<Boolean> = _sortByEarliest.asStateFlow()
 
@@ -185,8 +184,9 @@ class MainViewModel(
         private set
 
     private fun loadHintPref() {
-        val prefs = getApplication<android.app.Application>()
-            .getSharedPreferences("bushop_prefs", 0)
+        val prefs =
+            getApplication<android.app.Application>()
+                .getSharedPreferences("bushop_prefs", 0)
         hasSeenDragHint = prefs.getBoolean("has_seen_hint", false)
     }
 
@@ -194,8 +194,11 @@ class MainViewModel(
         hasSeenDragHint = true
         getApplication<android.app.Application>()
             .getSharedPreferences("bushop_prefs", 0)
-            .edit().putBoolean("has_seen_hint", true).apply()
+            .edit()
+            .putBoolean("has_seen_hint", true)
+            .apply()
     }
+
     var downloadProgress by mutableStateOf(0f)
         private set
 
@@ -228,16 +231,18 @@ class MainViewModel(
                 val targetFile = File(getApplication<android.app.Application>().cacheDir, "bus-hop-update.apk")
                 val success = updateChecker.downloadApk(info.downloadUrl, targetFile)
                 if (success) {
-                    val apkUri = androidx.core.content.FileProvider.getUriForFile(
-                        getApplication(),
-                        "${getApplication<android.app.Application>().packageName}.fileprovider",
-                        targetFile
-                    )
-                    val intent = android.content.Intent(android.content.Intent.ACTION_VIEW).apply {
-                        setDataAndType(apkUri, "application/vnd.android.package-archive")
-                        flags = android.content.Intent.FLAG_ACTIVITY_NEW_TASK or
+                    val apkUri =
+                        androidx.core.content.FileProvider.getUriForFile(
+                            getApplication(),
+                            "${getApplication<android.app.Application>().packageName}.fileprovider",
+                            targetFile,
+                        )
+                    val intent =
+                        android.content.Intent(android.content.Intent.ACTION_VIEW).apply {
+                            setDataAndType(apkUri, "application/vnd.android.package-archive")
+                            flags = android.content.Intent.FLAG_ACTIVITY_NEW_TASK or
                                 android.content.Intent.FLAG_GRANT_READ_URI_PERMISSION
-                    }
+                        }
                     getApplication<android.app.Application>().startActivity(intent)
                     _snackbarMessage.tryEmit("Installing v${info.latestVersion}…")
                 } else {
@@ -277,39 +282,46 @@ class MainViewModel(
         }
 
         viewModelScope.launch {
-            val baseFlow = combine(
-                repository.savedBusStops,
-                repository.cachedBusServices,
-                repository.cachedTimestamps,
-                repository.collapsedStopsFlow,
-                _sortByEarliest
-            ) { stops, cached, timestamps, collapsedStops, sortByEarliest ->
-                val mergedStops = stops.map { stop ->
-                    val cachedServices = cached[stop.code] ?: emptyList()
-                    val existing = _savedStops.value.find { it.busStop.code == stop.code }
-                    BusStopWithArrivals(
-                        busStop = stop,
-                        services = cachedServices,
-                        isLoading = existing?.isLoading ?: false,
-                        error = existing?.error,
-                        isOffline = existing?.isOffline ?: false,
-                        lastUpdated = existing?.lastUpdated ?: 0L,
-                        cachedAt = timestamps[stop.code] ?: 0L,
-                        isCollapsed = existing?.isCollapsed ?: false,
-                        isPinned = existing?.isPinned ?: false
-                    )
+            val baseFlow =
+                combine(
+                    repository.savedBusStops,
+                    repository.cachedBusServices,
+                    repository.cachedTimestamps,
+                    repository.collapsedStopsFlow,
+                    _sortByEarliest,
+                ) { stops, cached, timestamps, collapsedStops, sortByEarliest ->
+                    val mergedStops =
+                        stops.map { stop ->
+                            val cachedServices = cached[stop.code] ?: emptyList()
+                            val existing = _savedStops.value.find { it.busStop.code == stop.code }
+                            BusStopWithArrivals(
+                                busStop = stop,
+                                services = cachedServices,
+                                isLoading = existing?.isLoading ?: false,
+                                error = existing?.error,
+                                isOffline = existing?.isOffline ?: false,
+                                lastUpdated = existing?.lastUpdated ?: 0L,
+                                cachedAt = timestamps[stop.code] ?: 0L,
+                                isCollapsed = existing?.isCollapsed ?: false,
+                                isPinned = existing?.isPinned ?: false,
+                            )
+                        }
+                    useCase.applyPersistedCollapsedState(mergedStops, collapsedStops) to sortByEarliest
                 }
-                useCase.applyPersistedCollapsedState(mergedStops, collapsedStops) to sortByEarliest
-            }
             combine(baseFlow, _pinnedServices) { (stops, sortByEarliest), pinned ->
                 stops.map { stopWithArrivals ->
-                    val pinnedForStop = pinned
-                        .filter { it.startsWith("${stopWithArrivals.busStop.code}:") }
-                        .map { it.substringAfter(":") }.toSet()
+                    val pinnedForStop =
+                        pinned
+                            .filter { it.startsWith("${stopWithArrivals.busStop.code}:") }
+                            .map { it.substringAfter(":") }
+                            .toSet()
                     stopWithArrivals.copy(
-                        services = useCase.sortServicesWithPins(
-                            stopWithArrivals.services, pinnedForStop, sortByEarliest
-                        )
+                        services =
+                            useCase.sortServicesWithPins(
+                                stopWithArrivals.services,
+                                pinnedForStop,
+                                sortByEarliest,
+                            ),
                     )
                 }
             }.collect { list ->
@@ -344,7 +356,10 @@ class MainViewModel(
         addStopIsLoading = false
     }
 
-    fun addBusStop(code: String, name: String = "") {
+    fun addBusStop(
+        code: String,
+        name: String = "",
+    ) {
         // Guard against rapid double-taps
         if (addStopIsLoading) return
 
@@ -361,9 +376,10 @@ class MainViewModel(
                         addStopIsLoading = false
                         return@launch
                     }
-            is NetworkResult.Success -> {
-                consecutiveFailures = 0
-                _apiStatus.value = ApiStatus.Healthy
+
+                    is NetworkResult.Success -> {
+                        consecutiveFailures = 0
+                        _apiStatus.value = ApiStatus.Healthy
                         if (arrivalResult.data.isEmpty()) {
                             addStopError = "No bus services found at this stop."
                             addStopIsLoading = false
@@ -372,15 +388,16 @@ class MainViewModel(
                     }
                 }
 
-                val result = try {
-                    repository.addBusStop(BusStop(code = formattedCode, name = name))
-                } catch (e: CancellationException) {
-                    throw e
-                } catch (e: Exception) {
-                    addStopError = "Failed to save bus stop (${e.message ?: "unknown error"})."
-                    addStopIsLoading = false
-                    return@launch
-                }
+                val result =
+                    try {
+                        repository.addBusStop(BusStop(code = formattedCode, name = name))
+                    } catch (e: CancellationException) {
+                        throw e
+                    } catch (e: Exception) {
+                        addStopError = "Failed to save bus stop (${e.message ?: "unknown error"})."
+                        addStopIsLoading = false
+                        return@launch
+                    }
                 if (result.isFailure) {
                     if (result.exceptionOrNull() is DuplicateStopException) {
                         addStopError = "Bus stop already exists"
@@ -399,53 +416,53 @@ class MainViewModel(
         }
     }
 
-    private suspend fun getBusArrivalsSafely(code: String): NetworkResult<List<com.bushop.sg.domain.model.BusService>> {
-        return try {
+    private suspend fun getBusArrivalsSafely(code: String): NetworkResult<List<com.bushop.sg.domain.model.BusService>> =
+        try {
             repository.getBusArrivals(code)
         } catch (e: CancellationException) {
             throw e
         } catch (e: Exception) {
             NetworkResult.Error(e.message ?: "Unexpected error", e)
         }
-    }
 
     fun removeBusStop(code: String) {
+        // Update state immediately (don't wait for DataStore flow)
+        _savedStops.value = _savedStops.value.filter { it.busStop.code != code }
         viewModelScope.launch {
             repository.removeBusStop(code)
         }
     }
 
-    /** One-position move (used for drag-and-drop mid-gesture swapping). */
-    fun moveStopOnePosition(code: String, direction: Int) {
-        moveStop(code, direction)
-    }
-
     /** Multi-position move (used for final drop in free-form drag). */
-    fun moveStop(code: String, delta: Int) {
+    fun moveStop(
+        code: String,
+        delta: Int,
+    ) {
         if (delta == 0) return
         val list = _savedStops.value.toMutableList()
         val fromIdx = list.indexOfFirst { it.busStop.code == code }
         if (fromIdx == -1) return
-        // Apply multi-position move directly
-        val toIdx = (fromIdx + delta).coerceIn(0, list.lastIndex)
-        if (fromIdx == toIdx) return
         val item = list.removeAt(fromIdx)
-        // Recalculate index after removal
-        val actualToIdx = (fromIdx + delta).coerceIn(0, list.size)
-        list.add(actualToIdx, item)
+        val toIdx = (fromIdx + delta).coerceIn(0, list.size)
+        if (fromIdx == toIdx) return
+        list.add(toIdx, item)
         _savedStops.value = list
         additionOrder = list.map { it.busStop.code }
         viewModelScope.launch { repository.reorderStops(list.map { it.busStop }) }
     }
 
-    private suspend fun refreshArrivalsInternal(code: String, isAutoRefresh: Boolean) {
+    private suspend fun refreshArrivalsInternal(
+        code: String,
+        isAutoRefresh: Boolean,
+    ) {
         // Set loading state before API call (for manual refresh only)
         if (!isAutoRefresh) {
             val idx = _savedStops.value.indexOfFirst { it.busStop.code == code }
             if (idx == -1) return
-            _savedStops.value = _savedStops.value.toMutableList().apply {
-                this[idx] = this[idx].copy(isLoading = true, error = null, isOffline = false)
-            }
+            _savedStops.value =
+                _savedStops.value.toMutableList().apply {
+                    this[idx] = this[idx].copy(isLoading = true, error = null, isOffline = false)
+                }
         }
 
         val result = getBusArrivalsSafely(code)
@@ -458,47 +475,59 @@ class MainViewModel(
             is NetworkResult.Error -> {
                 val isOffline = result.exception is IOException
                 consecutiveFailures++
-                _apiStatus.value = when {
-                    consecutiveFailures >= 10 -> ApiStatus.Down
-                    consecutiveFailures >= 3 -> ApiStatus.Degraded
-                    else -> _apiStatus.value
-                }
+                _apiStatus.value =
+                    when {
+                        consecutiveFailures >= 10 -> ApiStatus.Down
+                        consecutiveFailures >= 3 -> ApiStatus.Degraded
+                        else -> _apiStatus.value
+                    }
                 if (!isAutoRefresh) {
-                    _savedStops.value = _savedStops.value.toMutableList().apply {
-                        this[index] = this[index].copy(
-                            isLoading = false,
-                            error = if (isOffline) null else result.message,
-                            isOffline = isOffline
-                        )
-                    }
+                    _savedStops.value =
+                        _savedStops.value.toMutableList().apply {
+                            this[index] =
+                                this[index].copy(
+                                    isLoading = false,
+                                    error = if (isOffline) null else result.message,
+                                    isOffline = isOffline,
+                                )
+                        }
                 } else {
-                    _savedStops.value = _savedStops.value.toMutableList().apply {
-                        this[index] = this[index].copy(isLoading = false)
-                    }
+                    _savedStops.value =
+                        _savedStops.value.toMutableList().apply {
+                            this[index] = this[index].copy(isLoading = false)
+                        }
                 }
             }
+
             is NetworkResult.Success -> {
                 consecutiveFailures = 0
                 _apiStatus.value = ApiStatus.Healthy
-                val pinnedForStop = _pinnedServices.value
-                    .filter { it.startsWith("${code}:") }
-                    .map { it.substringAfter(":") }.toSet()
+                val pinnedForStop =
+                    _pinnedServices.value
+                        .filter { it.startsWith("$code:") }
+                        .map { it.substringAfter(":") }
+                        .toSet()
                 val sortedServices = useCase.sortServicesWithPins(result.data, pinnedForStop, _sortByEarliest.value)
-                _savedStops.value = _savedStops.value.toMutableList().apply {
-                    this[index] = this[index].copy(
-                        services = sortedServices,
-                        isLoading = false,
-                        error = null,
-                        isOffline = false,
-                        lastUpdated = System.currentTimeMillis()
-                    )
-                }
+                _savedStops.value =
+                    _savedStops.value.toMutableList().apply {
+                        this[index] =
+                            this[index].copy(
+                                services = sortedServices,
+                                isLoading = false,
+                                error = null,
+                                isOffline = false,
+                                lastUpdated = System.currentTimeMillis(),
+                            )
+                    }
                 lastUpdatedAll = System.currentTimeMillis()
             }
         }
     }
 
-    fun refreshArrivals(code: String, isAutoRefresh: Boolean = false) {
+    fun refreshArrivals(
+        code: String,
+        isAutoRefresh: Boolean = false,
+    ) {
         viewModelScope.launch {
             if (refreshCoordinator.tryRefresh(code, isAutoRefresh)) {
                 refreshArrivalsInternal(code, isAutoRefresh)
@@ -515,7 +544,7 @@ class MainViewModel(
                     refreshCoordinator.refreshAllConcurrent(
                         codes = _savedStops.value.map { it.busStop.code },
                         isAutoRefresh = true,
-                        refreshBlock = { refreshArrivalsInternal(it, true) }
+                        refreshBlock = { refreshArrivalsInternal(it, true) },
                     )
                 } finally {
                     isAutoRefreshing = false
@@ -531,7 +560,7 @@ class MainViewModel(
                 refreshCoordinator.refreshAllConcurrent(
                     codes = _savedStops.value.map { it.busStop.code },
                     isAutoRefresh = false,
-                    refreshBlock = { refreshArrivalsInternal(it, false) }
+                    refreshBlock = { refreshArrivalsInternal(it, false) },
                 )
                 delay(400)
             } finally {
@@ -553,11 +582,13 @@ class MainViewModel(
     }
 
     fun toggleThemeMode() {
-        setThemeMode(when (_themeModeFlow.value) {
-            ThemeMode.SYSTEM -> ThemeMode.LIGHT
-            ThemeMode.LIGHT -> ThemeMode.DARK
-            ThemeMode.DARK -> ThemeMode.SYSTEM
-        })
+        setThemeMode(
+            when (_themeModeFlow.value) {
+                ThemeMode.SYSTEM -> ThemeMode.LIGHT
+                ThemeMode.LIGHT -> ThemeMode.DARK
+                ThemeMode.DARK -> ThemeMode.SYSTEM
+            },
+        )
     }
 
     fun toggleSortOrder() {
@@ -579,44 +610,64 @@ class MainViewModel(
     private fun persistCollapsedStops(collapsedCodes: Set<String>) {
         // Debounce collapse state persistence (500ms)
         saveCollapseJob?.cancel()
-        saveCollapseJob = viewModelScope.launch {
-            delay(500)
-            repository.setCollapsedStops(collapsedCodes.toSet())
-        }
+        saveCollapseJob =
+            viewModelScope.launch {
+                delay(500)
+                repository.setCollapsedStops(collapsedCodes.toSet())
+            }
     }
 
-    fun togglePinService(stopCode: String, serviceNo: String) {
+    fun togglePinService(
+        stopCode: String,
+        serviceNo: String,
+    ) {
         val key = "$stopCode:$serviceNo"
         val wasPinned = key in _pinnedServices.value
-        val updated = _pinnedServices.value.toMutableSet().apply {
-            if (contains(key)) remove(key) else add(key)
-        }
+        val updated =
+            _pinnedServices.value.toMutableSet().apply {
+                if (contains(key)) remove(key) else add(key)
+            }
         _pinnedServices.value = updated
         viewModelScope.launch {
             repository.savePinnedServices(updated)
         }
         _snackbarMessage.tryEmit(
-            if (!wasPinned) "Pinned bus $serviceNo"
-            else "Unpinned bus $serviceNo"
+            if (!wasPinned) {
+                "Pinned bus $serviceNo"
+            } else {
+                "Unpinned bus $serviceNo"
+            },
         )
     }
 
-    fun isServicePinned(stopCode: String, serviceNo: String): Boolean =
-        "$stopCode:$serviceNo" in _pinnedServices.value
+    fun isServicePinned(
+        stopCode: String,
+        serviceNo: String,
+    ): Boolean = "$stopCode:$serviceNo" in _pinnedServices.value
 
     fun togglePin(code: String) {
         val index = _savedStops.value.indexOfFirst { it.busStop.code == code }
         if (index != -1) {
             val wasPinned = _savedStops.value[index].isPinned
-            _savedStops.value = _savedStops.value.toMutableList().apply {
-                this[index] = this[index].copy(isPinned = !this[index].isPinned)
-            }.let { list ->
-                useCase.applyPinning(list, wasPinned, additionOrder)
-            }
-            val stopName = _savedStops.value.find { it.busStop.code == code }?.busStop?.name ?: code
+            _savedStops.value =
+                _savedStops.value
+                    .toMutableList()
+                    .apply {
+                        this[index] = this[index].copy(isPinned = !this[index].isPinned)
+                    }.let { list ->
+                        useCase.applyPinning(list, wasPinned, additionOrder)
+                    }
+            val stopName =
+                _savedStops.value
+                    .find { it.busStop.code == code }
+                    ?.busStop
+                    ?.name ?: code
             _snackbarMessage.tryEmit(
-                if (!wasPinned) "Pinned stop $stopName"
-                else "Unpinned stop $stopName"
+                if (!wasPinned) {
+                    "Pinned stop $stopName"
+                } else {
+                    "Unpinned stop $stopName"
+                },
             )
         }
     }
@@ -644,11 +695,9 @@ class MainViewModel(
     class Factory(
         private val application: android.app.Application,
         private val repository: BusRepository,
-        private val busStopIndex: BusStopIndex
+        private val busStopIndex: BusStopIndex,
     ) : ViewModelProvider.Factory {
         @Suppress("UNCHECKED_CAST")
-        override fun <T : ViewModel> create(modelClass: Class<T>): T {
-            return MainViewModel(application, repository, busStopIndex) as T
-        }
+        override fun <T : ViewModel> create(modelClass: Class<T>): T = MainViewModel(application, repository, busStopIndex) as T
     }
 }

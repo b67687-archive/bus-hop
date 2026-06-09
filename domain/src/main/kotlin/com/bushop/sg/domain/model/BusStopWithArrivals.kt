@@ -9,7 +9,7 @@ data class BusStopWithArrivals(
     val lastUpdated: Long = 0L,
     val cachedAt: Long = 0L, // timestamp of when cached data was fetched
     val isCollapsed: Boolean = false,
-    val isPinned: Boolean = false
+    val isPinned: Boolean = false,
 ) {
     val isStale: Boolean get() =
         cachedAt > 0 && (System.currentTimeMillis() - cachedAt) > 120_000 // 2 min

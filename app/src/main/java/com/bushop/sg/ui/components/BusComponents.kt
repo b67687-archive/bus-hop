@@ -1,49 +1,47 @@
 package com.bushop.sg.ui.components
 
-
 import androidx.compose.animation.AnimatedVisibility
-import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.FastOutSlowInEasing
+import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.tween
+import androidx.compose.animation.expandVertically
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
 import androidx.compose.animation.shrinkVertically
-import androidx.compose.animation.expandVertically
 import androidx.compose.foundation.BorderStroke
-import androidx.compose.foundation.border
-import androidx.compose.foundation.background
 import androidx.compose.foundation.ExperimentalFoundationApi
+import androidx.compose.foundation.background
+import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.gestures.detectDragGesturesAfterLongPress
 import androidx.compose.foundation.gestures.detectTapGestures
-import androidx.compose.material.icons.filled.Chair
-import androidx.compose.material.icons.filled.DirectionsBus
-import androidx.compose.material.icons.outlined.DirectionsBus
-import androidx.compose.material.icons.filled.Warning
-import androidx.compose.material.icons.automirrored.filled.DirectionsWalk
-
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.ExperimentalLayoutApi
 import androidx.compose.foundation.layout.FlowRow
-import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.height
-import androidx.compose.foundation.layout.widthIn
-import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.filled.DirectionsWalk
+import androidx.compose.material.icons.filled.Chair
 import androidx.compose.material.icons.filled.CloudOff
+import androidx.compose.material.icons.filled.DirectionsBus
 import androidx.compose.material.icons.filled.ExpandLess
 import androidx.compose.material.icons.filled.ExpandMore
 import androidx.compose.material.icons.filled.PushPin
+import androidx.compose.material.icons.filled.Warning
 import androidx.compose.material.icons.outlined.Accessibility
+import androidx.compose.material.icons.outlined.DirectionsBus
 import androidx.compose.material.icons.outlined.PushPin
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
@@ -64,21 +62,20 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.graphicsLayer
+import androidx.compose.ui.hapticfeedback.HapticFeedbackType
+import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.layout.onGloballyPositioned
 import androidx.compose.ui.layout.positionInRoot
-import androidx.compose.ui.zIndex
-
-import androidx.compose.ui.graphics.graphicsLayer
+import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.ui.platform.LocalHapticFeedback
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.dp
-import androidx.compose.ui.input.pointer.pointerInput
-import androidx.compose.ui.platform.LocalDensity
-import androidx.compose.ui.hapticfeedback.HapticFeedbackType
-import androidx.compose.ui.platform.LocalHapticFeedback
 import androidx.compose.ui.window.Popup
+import androidx.compose.ui.zIndex
 import com.bushop.sg.domain.model.BusService
 import com.bushop.sg.domain.model.BusStopWithArrivals
 import com.bushop.sg.domain.model.toDisplayArrival
@@ -93,12 +90,12 @@ fun BusStopCard(
     onDelete: () -> Unit,
     onTogglePinService: (String) -> Unit,
     pinnedServiceNos: Set<String> = emptySet(),
-    onMoveStop: ((Int) -> Unit)? = null,  // called on drag end (multi-position delta)
-    onDragStart: ((code: String) -> Unit)? = null,   // called when drag begins
+    onMoveStop: ((Int) -> Unit)? = null, // called on drag end (multi-position delta)
+    onDragStart: ((code: String) -> Unit)? = null, // called when drag begins
     onDragProgress: ((code: String, lastTotalY: Float, draggedCenterY: Float) -> Unit)? = null,
-    onDragEnd: ((code: String, lastTotalY: Float) -> Unit)? = null,  // called when drag ends
+    onDragEnd: ((code: String, lastTotalY: Float) -> Unit)? = null, // called when drag ends
     isDeleteTargeted: Boolean = false,
-    modifier: Modifier = Modifier
+    modifier: Modifier = Modifier,
 ) {
     val busStopCode = stop.busStop.code
     val busStopName = stop.busStop.name
@@ -119,147 +116,172 @@ fun BusStopCard(
     val dragScale by animateFloatAsState(
         targetValue = if (isDeleteTargeted) 0.86f else 1f,
         animationSpec = tween(durationMillis = 140),
-        label = "dragScale"
+        label = "dragScale",
     )
 
     Card(
-        modifier = modifier
-            .fillMaxWidth()
-            .onGloballyPositioned { coordinates ->
-                cardCenterYInRoot = coordinates.positionInRoot().y + (coordinates.size.height / 2f)
-            }
-            .then(
-                if (visuallyDragged) Modifier
-                    .zIndex(1f)
-                    .graphicsLayer {
-                        translationY = effectiveOffset
-                        scaleX = dragScale
-                        scaleY = dragScale
-                        alpha = if (isDeleteTargeted) 0.92f else 1f
-                    }
-                    .shadow(12.dp, RoundedCornerShape(20.dp))
-                else Modifier
-            ),
+        modifier =
+            modifier
+                .fillMaxWidth()
+                .onGloballyPositioned { coordinates ->
+                    cardCenterYInRoot = coordinates.positionInRoot().y + (coordinates.size.height / 2f)
+                }.then(
+                    if (visuallyDragged) {
+                        Modifier
+                            .zIndex(1f)
+                            .graphicsLayer {
+                                translationY = effectiveOffset
+                                scaleX = dragScale
+                                scaleY = dragScale
+                                alpha = if (isDeleteTargeted) 0.92f else 1f
+                            }.shadow(12.dp, RoundedCornerShape(20.dp))
+                    } else {
+                        Modifier
+                    },
+                ),
         shape = RoundedCornerShape(20.dp),
-        colors = CardDefaults.cardColors(
-            containerColor = if (isPinned) MaterialTheme.colorScheme.primaryContainer
-                            else MaterialTheme.colorScheme.surface
-        ),
+        colors =
+            CardDefaults.cardColors(
+                containerColor =
+                    if (isPinned) {
+                        MaterialTheme.colorScheme.primaryContainer
+                    } else {
+                        MaterialTheme.colorScheme.surface
+                    },
+            ),
         border = if (isPinned) BorderStroke(2.dp, MaterialTheme.colorScheme.primary) else null,
-        elevation = CardDefaults.cardElevation(defaultElevation = if (visuallyDragged) 12.dp else 3.dp)
+        elevation = CardDefaults.cardElevation(defaultElevation = if (visuallyDragged) 12.dp else 3.dp),
     ) {
-    Column {
+        Column {
             // ── Header background (pinned = blue pill, unpinned = none) ──
             Row(
-                modifier = (if (isPinned) Modifier
-                    .fillMaxWidth()
-                    .clip(RoundedCornerShape(12.dp))
-                    .background(MaterialTheme.colorScheme.primaryContainer)
-                else Modifier.fillMaxWidth())
-                    .padding(horizontal = 16.dp, vertical = 12.dp)
-                    .then(
-                        if (onMoveStop != null) {
+                modifier =
+                    (
+                        if (isPinned) {
                             Modifier
-                                .combinedClickable(
-                                    onClick = onToggleCollapse,
-                                    onLongClick = {}
-                                )
-                                .pointerInput(busStopCode, isCollapsed, onMoveStop) {
-                                    var totalY = 0f
-                                    detectDragGesturesAfterLongPress(
-                                        onDragStart = {
-                                            totalY = 0f
-                                            isLocallyDragged = true
-                                            localDragOffset = 0f
-                                            if (!isCollapsed) collapsedForDrag = true
-                                            haptic.performHapticFeedback(HapticFeedbackType.LongPress)
-                                            onDragStart?.invoke(busStopCode)
-                                        },
-                                        onDrag = { change, dragAmount ->
-                                            change.consume()
-                                            totalY += dragAmount.y
-                                            localDragOffset = totalY
-                                            onDragProgress?.invoke(
-                                                busStopCode,
-                                                totalY,
-                                                cardCenterYInRoot + totalY
-                                            )
-                                        },
-                                        onDragEnd = {
-                                            onDragEnd?.invoke(busStopCode, totalY)
-                                            isLocallyDragged = false
-                                            localDragOffset = 0f
-                                            collapsedForDrag = false
-                                        },
-                                        onDragCancel = {
-                                            isLocallyDragged = false
-                                            localDragOffset = 0f
-                                            collapsedForDrag = false
-                                        }
+                                .fillMaxWidth()
+                                .clip(RoundedCornerShape(12.dp))
+                                .background(MaterialTheme.colorScheme.primaryContainer)
+                        } else {
+                            Modifier.fillMaxWidth()
+                        }
+                    ).padding(horizontal = 16.dp, vertical = 12.dp)
+                        .then(
+                            if (onMoveStop != null) {
+                                Modifier
+                                    .pointerInput(busStopCode) {
+                                        detectTapGestures(
+                                            onTap = { onToggleCollapse() },
+                                        )
+                                    }.pointerInput(busStopCode) {
+                                        var totalY = 0f
+                                        detectDragGesturesAfterLongPress(
+                                            onDragStart = {
+                                                totalY = 0f
+                                                isLocallyDragged = true
+                                                localDragOffset = 0f
+                                                if (!isCollapsed) collapsedForDrag = true
+                                                haptic.performHapticFeedback(HapticFeedbackType.LongPress)
+                                                onDragStart?.invoke(busStopCode)
+                                            },
+                                            onDrag = { change, dragAmount ->
+                                                change.consume()
+                                                totalY += dragAmount.y
+                                                localDragOffset = totalY
+                                                onDragProgress?.invoke(
+                                                    busStopCode,
+                                                    totalY,
+                                                    cardCenterYInRoot + totalY,
+                                                )
+                                            },
+                                            onDragEnd = {
+                                                onDragEnd?.invoke(busStopCode, totalY)
+                                                isLocallyDragged = false
+                                                localDragOffset = 0f
+                                                collapsedForDrag = false
+                                            },
+                                            onDragCancel = {
+                                                isLocallyDragged = false
+                                                localDragOffset = 0f
+                                                collapsedForDrag = false
+                                            },
+                                        )
+                                    }
+                            } else {
+                                Modifier.pointerInput(onToggleCollapse, onDelete) {
+                                    detectTapGestures(
+                                        onTap = { onToggleCollapse() },
+                                        onLongPress = { onDelete() },
                                     )
                                 }
-                        } else Modifier.pointerInput(onToggleCollapse, onDelete) {
-                            detectTapGestures(
-                                onTap = { onToggleCollapse() },
-                                onLongPress = { onDelete() }
-                            )
-                        }
-                    ),
+                            },
+                        ),
                 horizontalArrangement = Arrangement.SpaceBetween,
-                verticalAlignment = Alignment.CenterVertically
+                verticalAlignment = Alignment.CenterVertically,
             ) {
                 Column(modifier = Modifier.weight(1f)) {
                     if (busStopName.isNotBlank()) {
                         val nameTextStyle = MaterialTheme.typography.titleLarge
-                        val dynamicFontSize = remember(busStopName) {
-                            when {
-                                busStopName.length > 45 -> nameTextStyle.fontSize * 0.55f
-                                busStopName.length > 35 -> nameTextStyle.fontSize * 0.65f
-                                busStopName.length > 25 -> nameTextStyle.fontSize * 0.80f
-                                busStopName.length > 18 -> nameTextStyle.fontSize * 0.90f
-                                else -> nameTextStyle.fontSize
+                        val dynamicFontSize =
+                            remember(busStopName) {
+                                when {
+                                    busStopName.length > 45 -> nameTextStyle.fontSize * 0.55f
+                                    busStopName.length > 35 -> nameTextStyle.fontSize * 0.65f
+                                    busStopName.length > 25 -> nameTextStyle.fontSize * 0.80f
+                                    busStopName.length > 18 -> nameTextStyle.fontSize * 0.90f
+                                    else -> nameTextStyle.fontSize
+                                }
                             }
-                        }
-                        val namePillBg = if (isPinned) MaterialTheme.colorScheme.primary
-                                         else MaterialTheme.colorScheme.primaryContainer
+                        val namePillBg =
+                            if (isPinned) {
+                                MaterialTheme.colorScheme.primary
+                            } else {
+                                MaterialTheme.colorScheme.primaryContainer
+                            }
                         Box(
-                            modifier = Modifier
-                                .widthIn(max = 130.dp)
-                                .clip(RoundedCornerShape(10.dp))
-                                .background(namePillBg)
-                                .padding(horizontal = 12.dp, vertical = 8.dp)
+                            modifier =
+                                Modifier
+                                    .widthIn(max = 130.dp)
+                                    .clip(RoundedCornerShape(10.dp))
+                                    .background(namePillBg)
+                                    .padding(horizontal = 12.dp, vertical = 8.dp),
                         ) {
                             Text(
                                 text = busStopName,
                                 fontSize = dynamicFontSize,
                                 style = nameTextStyle.copy(fontSize = dynamicFontSize),
                                 fontWeight = FontWeight.Bold,
-                                color = if (isPinned) MaterialTheme.colorScheme.onPrimary
-                                       else MaterialTheme.colorScheme.onPrimaryContainer,
-                                maxLines = 3
+                                color =
+                                    if (isPinned) {
+                                        MaterialTheme.colorScheme.onPrimary
+                                    } else {
+                                        MaterialTheme.colorScheme.onPrimaryContainer
+                                    },
+                                maxLines = 3,
                             )
                         }
                     } else {
                         Text(
                             text = busStopCode,
                             style = MaterialTheme.typography.titleLarge,
-                            fontWeight = FontWeight.Bold
+                            fontWeight = FontWeight.Bold,
                         )
                     }
                 }
                 Row(verticalAlignment = Alignment.CenterVertically) {
                     if (busStopName.isNotBlank()) {
                         Box(
-                            modifier = Modifier
-                                .clip(RoundedCornerShape(6.dp))
-                                .background(MaterialTheme.colorScheme.primary.copy(alpha = 0.1f))
-                                .padding(horizontal = 8.dp, vertical = 3.dp)
+                            modifier =
+                                Modifier
+                                    .clip(RoundedCornerShape(6.dp))
+                                    .background(MaterialTheme.colorScheme.primary.copy(alpha = 0.1f))
+                                    .padding(horizontal = 8.dp, vertical = 3.dp),
                         ) {
                             Text(
                                 text = busStopCode,
                                 style = MaterialTheme.typography.labelMedium,
                                 fontWeight = FontWeight.SemiBold,
-                                color = MaterialTheme.colorScheme.primary
+                                color = MaterialTheme.colorScheme.primary,
                             )
                         }
                         Spacer(modifier = Modifier.width(4.dp))
@@ -267,31 +289,32 @@ fun BusStopCard(
                     if (isLoading) {
                         CircularProgressIndicator(
                             modifier = Modifier.size(16.dp),
-                            strokeWidth = 2.dp
+                            strokeWidth = 2.dp,
                         )
                     }
                     IconButton(
                         onClick = onTogglePin,
-                        modifier = Modifier.size(20.dp)
+                        modifier = Modifier.size(20.dp),
                     ) {
                         Icon(
                             imageVector = if (isPinned) Icons.Filled.PushPin else Icons.Outlined.PushPin,
                             contentDescription = if (isPinned) "Unpin" else "Pin",
                             modifier = Modifier.size(12.dp),
-                            tint = if (isPinned) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant
+                            tint = if (isPinned) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant,
                         )
                     }
                     Box(
-                        modifier = Modifier
-                            .size(32.dp)
-                            .clip(CircleShape)
-                            .clickable(onClick = onToggleCollapse),
-                        contentAlignment = Alignment.Center
+                        modifier =
+                            Modifier
+                                .size(32.dp)
+                                .clip(CircleShape)
+                                .clickable(onClick = onToggleCollapse),
+                        contentAlignment = Alignment.Center,
                     ) {
                         Icon(
                             imageVector = if (effectiveCollapsed) Icons.Default.ExpandMore else Icons.Default.ExpandLess,
                             contentDescription = if (effectiveCollapsed) "Expand" else "Collapse",
-                            modifier = Modifier.size(18.dp)
+                            modifier = Modifier.size(18.dp),
                         )
                     }
                 }
@@ -300,17 +323,20 @@ fun BusStopCard(
             val easing = FastOutSlowInEasing
             AnimatedVisibility(
                 visible = effectiveCollapsed && services.isNotEmpty(),
-                enter = fadeIn(animationSpec = tween(durationMillis = 280, easing = easing)) +
+                enter =
+                    fadeIn(animationSpec = tween(durationMillis = 280, easing = easing)) +
                         expandVertically(animationSpec = tween(durationMillis = 280, easing = easing)),
-                exit = fadeOut(animationSpec = tween(durationMillis = 150, easing = easing)) +
-                        shrinkVertically(animationSpec = tween(durationMillis = 150, easing = easing))
+                exit =
+                    fadeOut(animationSpec = tween(durationMillis = 150, easing = easing)) +
+                        shrinkVertically(animationSpec = tween(durationMillis = 150, easing = easing)),
             ) {
                 FlowRow(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(horizontal = 16.dp, vertical = 8.dp),
+                    modifier =
+                        Modifier
+                            .fillMaxWidth()
+                            .padding(horizontal = 16.dp, vertical = 8.dp),
                     horizontalArrangement = Arrangement.spacedBy(8.dp),
-                    verticalArrangement = Arrangement.spacedBy(4.dp)
+                    verticalArrangement = Arrangement.spacedBy(4.dp),
                 ) {
                     services.forEach { service ->
                         CollapsedBusChip(service = service)
@@ -320,10 +346,12 @@ fun BusStopCard(
 
             AnimatedVisibility(
                 visible = !effectiveCollapsed,
-                enter = fadeIn(animationSpec = tween(durationMillis = 280, easing = easing)) +
+                enter =
+                    fadeIn(animationSpec = tween(durationMillis = 280, easing = easing)) +
                         expandVertically(animationSpec = tween(durationMillis = 280, easing = easing)),
-                exit = fadeOut(animationSpec = tween(durationMillis = 150, easing = easing)) +
-                        shrinkVertically(animationSpec = tween(durationMillis = 150, easing = easing))
+                exit =
+                    fadeOut(animationSpec = tween(durationMillis = 150, easing = easing)) +
+                        shrinkVertically(animationSpec = tween(durationMillis = 150, easing = easing)),
             ) {
                 Column(modifier = Modifier.padding(horizontal = 16.dp)) {
                     Spacer(modifier = Modifier.height(8.dp))
@@ -332,32 +360,40 @@ fun BusStopCard(
                         isOffline -> {
                             OfflineBanner(onRetry = onRefresh)
                         }
+
                         error != null -> {
                             ErrorBanner(message = error, onRetry = onRefresh)
                         }
+
                         services.isEmpty() && !isLoading -> {
                             Text(
                                 text = "No buses available",
                                 style = MaterialTheme.typography.bodyMedium,
-                                color = MaterialTheme.colorScheme.onSurfaceVariant
+                                color = MaterialTheme.colorScheme.onSurfaceVariant,
                             )
                         }
+
                         services.all { it.next == null && it.subsequent == null && it.next3 == null } && !isLoading -> {
                             val now = java.util.Calendar.getInstance()
                             val hour = now.get(java.util.Calendar.HOUR_OF_DAY)
                             Text(
-                                text = if (hour >= 23 || hour < 6) "All buses have stopped running for the night"
-                                       else "No upcoming buses at this stop",
+                                text =
+                                    if (hour >= 23 || hour < 6) {
+                                        "All buses have stopped running for the night"
+                                    } else {
+                                        "No upcoming buses at this stop"
+                                    },
                                 style = MaterialTheme.typography.bodyMedium,
-                                color = MaterialTheme.colorScheme.onSurfaceVariant
+                                color = MaterialTheme.colorScheme.onSurfaceVariant,
                             )
                         }
+
                         else -> {
                             services.forEach { service ->
                                 BusServiceRow(
                                     service = service,
                                     isPinned = service.serviceNo in pinnedServiceNos,
-                                    onTogglePinService = { onTogglePinService(service.serviceNo) }
+                                    onTogglePinService = { onTogglePinService(service.serviceNo) },
                                 )
                                 Spacer(modifier = Modifier.height(12.dp))
                             }
@@ -376,9 +412,10 @@ private fun CollapsedBusChip(service: BusService) {
     val isArriving = eta == "Arr." || eta == "Arr"
 
     Box(
-        modifier = Modifier
-            .clip(RoundedCornerShape(8.dp))
-            .background(MaterialTheme.colorScheme.primary.copy(alpha = 0.15f))
+        modifier =
+            Modifier
+                .clip(RoundedCornerShape(8.dp))
+                .background(MaterialTheme.colorScheme.primary.copy(alpha = 0.15f)),
     ) {
         Row(verticalAlignment = Alignment.CenterVertically) {
             Text(
@@ -386,19 +423,20 @@ private fun CollapsedBusChip(service: BusService) {
                 modifier = Modifier.padding(horizontal = 8.dp, vertical = 5.dp),
                 style = MaterialTheme.typography.labelMedium,
                 fontWeight = FontWeight.Bold,
-                color = MaterialTheme.colorScheme.primary
+                color = MaterialTheme.colorScheme.primary,
             )
             Box(
-                modifier = Modifier
-                    .clip(RoundedCornerShape(8.dp))
-                    .background(if (isArriving) Color(0xFF34C759) else MaterialTheme.colorScheme.primary)
-                    .padding(horizontal = 8.dp, vertical = 5.dp)
+                modifier =
+                    Modifier
+                        .clip(RoundedCornerShape(8.dp))
+                        .background(if (isArriving) Color(0xFF34C759) else MaterialTheme.colorScheme.primary)
+                        .padding(horizontal = 8.dp, vertical = 5.dp),
             ) {
                 Text(
                     text = eta,
                     style = MaterialTheme.typography.labelSmall,
                     fontWeight = FontWeight.Bold,
-                    color = Color.White
+                    color = Color.White,
                 )
             }
         }
@@ -408,88 +446,102 @@ private fun CollapsedBusChip(service: BusService) {
 @Composable
 private fun OfflineBanner(onRetry: () -> Unit) {
     Row(
-        modifier = Modifier
-            .fillMaxWidth()
-            .clip(RoundedCornerShape(12.dp))
-            .background(MaterialTheme.colorScheme.tertiaryContainer)
-            .padding(16.dp),
+        modifier =
+            Modifier
+                .fillMaxWidth()
+                .clip(RoundedCornerShape(12.dp))
+                .background(MaterialTheme.colorScheme.tertiaryContainer)
+                .padding(16.dp),
         verticalAlignment = Alignment.CenterVertically,
-        horizontalArrangement = Arrangement.Center
+        horizontalArrangement = Arrangement.Center,
     ) {
         Icon(
             imageVector = Icons.Default.CloudOff,
             contentDescription = null,
             tint = MaterialTheme.colorScheme.onTertiaryContainer,
-            modifier = Modifier.size(20.dp)
+            modifier = Modifier.size(20.dp),
         )
         Spacer(modifier = Modifier.width(8.dp))
         Text(
             text = "No internet connection",
             style = MaterialTheme.typography.bodyMedium,
-            color = MaterialTheme.colorScheme.onTertiaryContainer
+            color = MaterialTheme.colorScheme.onTertiaryContainer,
         )
     }
 }
 
 @Composable
-private fun ErrorBanner(message: String, onRetry: () -> Unit) {
+private fun ErrorBanner(
+    message: String,
+    onRetry: () -> Unit,
+) {
     Row(
-        modifier = Modifier
-            .fillMaxWidth()
-            .clip(RoundedCornerShape(12.dp))
-            .background(MaterialTheme.colorScheme.errorContainer)
-            .padding(16.dp),
-        verticalAlignment = Alignment.CenterVertically
+        modifier =
+            Modifier
+                .fillMaxWidth()
+                .clip(RoundedCornerShape(12.dp))
+                .background(MaterialTheme.colorScheme.errorContainer)
+                .padding(16.dp),
+        verticalAlignment = Alignment.CenterVertically,
     ) {
         Text(
             text = message,
             style = MaterialTheme.typography.bodyMedium,
             color = MaterialTheme.colorScheme.error,
-            modifier = Modifier.weight(1f)
+            modifier = Modifier.weight(1f),
         )
     }
 }
 
 @Composable
 @OptIn(ExperimentalFoundationApi::class)
-fun BusServiceRow(service: BusService, isPinned: Boolean = false, onTogglePinService: (() -> Unit)? = null) {
+fun BusServiceRow(
+    service: BusService,
+    isPinned: Boolean = false,
+    onTogglePinService: (() -> Unit)? = null,
+) {
     Row(
-        modifier = Modifier
-            .fillMaxWidth()
-            .clip(RoundedCornerShape(12.dp))
-            .background(
-                if (isPinned) MaterialTheme.colorScheme.primaryContainer
-                else MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.4f)
-            )
-            .then(
-                if (isPinned) Modifier.border(1.5.dp, MaterialTheme.colorScheme.primary, RoundedCornerShape(12.dp))
-                else Modifier
-            )
-            .then(
-                if (onTogglePinService != null) {
-                    Modifier.combinedClickable(
-                        onClick = {},
-                        onLongClick = onTogglePinService
-                    )
-                } else {
-                    Modifier.clickable(onClick = {})
-                }
-            )
-            .padding(12.dp),
-        verticalAlignment = Alignment.CenterVertically
+        modifier =
+            Modifier
+                .fillMaxWidth()
+                .clip(RoundedCornerShape(12.dp))
+                .background(
+                    if (isPinned) {
+                        MaterialTheme.colorScheme.primaryContainer
+                    } else {
+                        MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.4f)
+                    },
+                ).then(
+                    if (isPinned) {
+                        Modifier.border(1.5.dp, MaterialTheme.colorScheme.primary, RoundedCornerShape(12.dp))
+                    } else {
+                        Modifier
+                    },
+                ).then(
+                    if (onTogglePinService != null) {
+                        Modifier.combinedClickable(
+                            onClick = {},
+                            onLongClick = onTogglePinService,
+                        )
+                    } else {
+                        Modifier.clickable(onClick = {})
+                    },
+                ).padding(12.dp),
+        verticalAlignment = Alignment.CenterVertically,
     ) {
         Box(
-            modifier = Modifier
-                .size(width = 56.dp, height = 44.dp)
-                .clip(RoundedCornerShape(8.dp))
-                .background(MaterialTheme.colorScheme.primary),
-            contentAlignment = Alignment.Center
+            modifier =
+                Modifier
+                    .size(width = 56.dp, height = 44.dp)
+                    .clip(RoundedCornerShape(8.dp))
+                    .background(MaterialTheme.colorScheme.primary),
+            contentAlignment = Alignment.Center,
         ) {
             Text(
                 text = service.serviceNo,
                 style = MaterialTheme.typography.titleLarge,
                 fontWeight = FontWeight.Bold,
-                color = MaterialTheme.colorScheme.onPrimary
+                color = MaterialTheme.colorScheme.onPrimary,
             )
         }
 
@@ -505,7 +557,7 @@ fun BusServiceRow(service: BusService, isPinned: Boolean = false, onTogglePinSer
                         imageVector = Icons.Outlined.Accessibility,
                         contentDescription = "Wheelchair accessible bus",
                         modifier = Modifier.size(16.dp),
-                        tint = MaterialTheme.colorScheme.primary
+                        tint = MaterialTheme.colorScheme.primary,
                     )
                 }
             }
@@ -516,76 +568,85 @@ fun BusServiceRow(service: BusService, isPinned: Boolean = false, onTogglePinSer
                 // Bus type row
                 Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(6.dp)) {
                     Icon(
-                        imageVector = when {
-                            arrival.busType.contains("Double") -> Icons.Filled.DirectionsBus
-                            arrival.busType.contains("Bendy") -> Icons.Filled.DirectionsBus
-                            else -> Icons.Outlined.DirectionsBus
-                        },
+                        imageVector =
+                            when {
+                                arrival.busType.contains("Double") -> Icons.Filled.DirectionsBus
+                                arrival.busType.contains("Bendy") -> Icons.Filled.DirectionsBus
+                                else -> Icons.Outlined.DirectionsBus
+                            },
                         contentDescription = null,
                         modifier = Modifier.size(16.dp),
-                        tint = MaterialTheme.colorScheme.onSurfaceVariant
+                        tint = MaterialTheme.colorScheme.onSurfaceVariant,
                     )
                     Text(
                         text = arrival.busType,
                         style = MaterialTheme.typography.bodySmall,
                         color = MaterialTheme.colorScheme.onSurfaceVariant,
                         maxLines = 1,
-                        overflow = TextOverflow.Ellipsis
+                        overflow = TextOverflow.Ellipsis,
                     )
                 }
                 // Load row
                 Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(6.dp)) {
                     Icon(
-                        imageVector = when {
-                            arrival.load.contains("Seats") -> Icons.Default.Chair
-                            arrival.load.contains("Standing") -> Icons.AutoMirrored.Filled.DirectionsWalk
-                            else -> Icons.Default.Warning
-                        },
+                        imageVector =
+                            when {
+                                arrival.load.contains("Seats") -> Icons.Default.Chair
+                                arrival.load.contains("Standing") -> Icons.AutoMirrored.Filled.DirectionsWalk
+                                else -> Icons.Default.Warning
+                            },
                         contentDescription = null,
                         modifier = Modifier.size(16.dp),
-                        tint = when {
-                            arrival.load.contains("Limited") -> Color(0xFFFF9800)
-                            else -> MaterialTheme.colorScheme.onSurfaceVariant
-                        }
+                        tint =
+                            when {
+                                arrival.load.contains("Limited") -> Color(0xFFFF9800)
+                                else -> MaterialTheme.colorScheme.onSurfaceVariant
+                            },
                     )
                     Text(
                         text = arrival.load,
                         style = MaterialTheme.typography.bodySmall,
                         color = MaterialTheme.colorScheme.onSurfaceVariant,
                         maxLines = 1,
-                        overflow = TextOverflow.Ellipsis
+                        overflow = TextOverflow.Ellipsis,
                     )
                 }
             }
-
         }
 
         Column(
             horizontalAlignment = Alignment.End,
-            verticalArrangement = Arrangement.spacedBy(2.dp)
+            verticalArrangement = Arrangement.spacedBy(2.dp),
         ) {
             // First timing — always show
             val nextArrival = service.next?.toDisplayArrival()
             val isArriving = nextArrival?.eta == "Arr." || nextArrival?.eta == "Arr"
             Box(
-                modifier = Modifier
-                    .widthIn(max = 88.dp)
-                    .clip(RoundedCornerShape(8.dp))
-                    .background(
-                        if (isArriving) Color(0xFF34C759)
-                        else MaterialTheme.colorScheme.primaryContainer
-                    )
-                    .padding(horizontal = 8.dp, vertical = 2.dp)
+                modifier =
+                    Modifier
+                        .widthIn(max = 88.dp)
+                        .clip(RoundedCornerShape(8.dp))
+                        .background(
+                            if (isArriving) {
+                                Color(0xFF34C759)
+                            } else {
+                                MaterialTheme.colorScheme.primaryContainer
+                            },
+                        ).padding(horizontal = 8.dp, vertical = 2.dp),
             ) {
                 Text(
                     text = nextArrival?.eta ?: "--",
                     style = MaterialTheme.typography.titleLarge,
                     fontWeight = FontWeight.Bold,
-                    color = if (isArriving) Color.White
-                            else MaterialTheme.colorScheme.onPrimaryContainer,
+                    color =
+                        if (isArriving) {
+                            Color.White
+                        } else {
+                            MaterialTheme.colorScheme.onPrimaryContainer
+                        },
                     textAlign = TextAlign.Center,
                     maxLines = 1,
-                    overflow = TextOverflow.Ellipsis
+                    overflow = TextOverflow.Ellipsis,
                 )
             }
             // Second timing — always show
@@ -594,7 +655,7 @@ fun BusServiceRow(service: BusService, isPinned: Boolean = false, onTogglePinSer
                 text = subArrival?.eta ?: "--",
                 style = MaterialTheme.typography.bodySmall,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
-                textAlign = TextAlign.End
+                textAlign = TextAlign.End,
             )
             // Third timing — always show
             val next3Arrival = service.next3?.toDisplayArrival()
@@ -602,7 +663,7 @@ fun BusServiceRow(service: BusService, isPinned: Boolean = false, onTogglePinSer
                 text = next3Arrival?.eta ?: "--",
                 style = MaterialTheme.typography.labelSmall,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
-                textAlign = TextAlign.End
+                textAlign = TextAlign.End,
             )
         }
     }
@@ -610,32 +671,35 @@ fun BusServiceRow(service: BusService, isPinned: Boolean = false, onTogglePinSer
 
 @Composable
 private fun OperatorBadge(operator: String) {
-    val color = when (operator) {
-        "SBST" -> Color(0xFF0055A4)
-        "SMRT" -> Color(0xFF003D7C)
-        "TTS" -> Color(0xFF8B0000)
-        "GAS" -> Color(0xFF6B8E23)
-        else -> Color(0xFF666666)
-    }
-    val label = when (operator) {
-        "SBST" -> "SBS"
-        "SMRT" -> "SMRT"
-        "TTS" -> "TTS"
-        "GAS" -> "GAS"
-        else -> operator
-    }
+    val color =
+        when (operator) {
+            "SBST" -> Color(0xFF0055A4)
+            "SMRT" -> Color(0xFF003D7C)
+            "TTS" -> Color(0xFF8B0000)
+            "GAS" -> Color(0xFF6B8E23)
+            else -> Color(0xFF666666)
+        }
+    val label =
+        when (operator) {
+            "SBST" -> "SBS"
+            "SMRT" -> "SMRT"
+            "TTS" -> "TTS"
+            "GAS" -> "GAS"
+            else -> operator
+        }
 
     Box(
-        modifier = Modifier
-            .clip(RoundedCornerShape(4.dp))
-            .background(color)
-            .padding(horizontal = 6.dp, vertical = 2.dp)
+        modifier =
+            Modifier
+                .clip(RoundedCornerShape(4.dp))
+                .background(color)
+                .padding(horizontal = 6.dp, vertical = 2.dp),
     ) {
         Text(
             text = label,
             style = MaterialTheme.typography.labelSmall,
             fontWeight = FontWeight.Bold,
-            color = Color.White
+            color = Color.White,
         )
     }
 }

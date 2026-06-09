@@ -1,10 +1,10 @@
 package com.bushop.sg
 
 import android.os.Bundle
-import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
+import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
@@ -35,9 +35,10 @@ class MainActivity : ComponentActivity() {
 
         val storage = BusStopStorage(applicationContext)
         val dataSource = RetrofitBusArrivalDataSource()
-        val busStopIndex = BusStopIndex(applicationContext).also { idx ->
-            lifecycleScope.launch(Dispatchers.IO) { idx.load() }
-        }
+        val busStopIndex =
+            BusStopIndex(applicationContext).also { idx ->
+                lifecycleScope.launch(Dispatchers.IO) { idx.load() }
+            }
         val repository = BusRepositoryImpl(storage, dataSource, busStopIndex)
         val viewModelFactory = MainViewModel.Factory(application, repository, busStopIndex)
 
@@ -45,22 +46,30 @@ class MainActivity : ComponentActivity() {
             val viewModel: MainViewModel = viewModel(factory = viewModelFactory)
             val themeMode by viewModel.themeModeFlow.collectAsState()
             val colorSchemeOption by viewModel.colorSchemeOptionFlow.collectAsState()
-            val isDarkTheme = when (themeMode) {
-                ThemeMode.SYSTEM -> isSystemInDarkTheme()
-                ThemeMode.LIGHT -> false
-                ThemeMode.DARK -> true
-            }
+            val isDarkTheme =
+                when (themeMode) {
+                    ThemeMode.SYSTEM -> isSystemInDarkTheme()
+                    ThemeMode.LIGHT -> false
+                    ThemeMode.DARK -> true
+                }
 
             // Pause auto-refresh when app goes to background
             val lifecycleOwner = LocalLifecycleOwner.current
             DisposableEffect(lifecycleOwner) {
-                val observer = LifecycleEventObserver { _, event ->
-                    when (event) {
-                        Lifecycle.Event.ON_START -> viewModel.resumeAutoRefresh()
-                        Lifecycle.Event.ON_STOP -> viewModel.pauseAutoRefresh()
-                        else -> {}
+                val observer =
+                    LifecycleEventObserver { _, event ->
+                        when (event) {
+                            Lifecycle.Event.ON_START -> {
+                                viewModel.resumeAutoRefresh()
+                            }
+
+                            Lifecycle.Event.ON_STOP -> {
+                                viewModel.pauseAutoRefresh()
+                            }
+
+                            else -> {}
+                        }
                     }
-                }
                 lifecycleOwner.lifecycle.addObserver(observer)
                 onDispose { lifecycleOwner.lifecycle.removeObserver(observer) }
             }

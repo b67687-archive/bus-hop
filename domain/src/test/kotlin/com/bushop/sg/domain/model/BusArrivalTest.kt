@@ -6,49 +6,80 @@ import org.junit.Test
 
 /** Regression tests for [BusInfo.toDisplayArrival]. */
 class BusArrivalTest {
-
     // ── ETA text ──
 
     @Test
     fun `eta shows Arr when less than 1 minute`() {
-        val info = BusInfo(
-            time = "2024-01-01T00:00:30+08:00", durationMs = 30_000,
-            lat = null, lng = null, load = "SEA", feature = null, type = "SD",
-            visitNumber = 1, originCode = null, destinationCode = null
-        )
+        val info =
+            BusInfo(
+                time = "2024-01-01T00:00:30+08:00",
+                durationMs = 30_000,
+                lat = null,
+                lng = null,
+                load = "SEA",
+                feature = null,
+                type = "SD",
+                visitNumber = 1,
+                originCode = null,
+                destinationCode = null,
+            )
         val display = info.toDisplayArrival()
         assertEquals("Arr.", display.eta)
     }
 
     @Test
     fun `eta shows minutes when 1 minute or more`() {
-        val info = BusInfo(
-            time = "", durationMs = 120_000,
-            lat = null, lng = null, load = "SEA", feature = null, type = "SD",
-            visitNumber = 1, originCode = null, destinationCode = null
-        )
+        val info =
+            BusInfo(
+                time = "",
+                durationMs = 120_000,
+                lat = null,
+                lng = null,
+                load = "SEA",
+                feature = null,
+                type = "SD",
+                visitNumber = 1,
+                originCode = null,
+                destinationCode = null,
+            )
         val display = info.toDisplayArrival()
         assertEquals("2 min", display.eta)
     }
 
     @Test
     fun `eta shows minute singular`() {
-        val info = BusInfo(
-            time = "", durationMs = 60_000,
-            lat = null, lng = null, load = "SEA", feature = null, type = "SD",
-            visitNumber = 1, originCode = null, destinationCode = null
-        )
+        val info =
+            BusInfo(
+                time = "",
+                durationMs = 60_000,
+                lat = null,
+                lng = null,
+                load = "SEA",
+                feature = null,
+                type = "SD",
+                visitNumber = 1,
+                originCode = null,
+                destinationCode = null,
+            )
         val display = info.toDisplayArrival()
         assertEquals("1 min", display.eta)
     }
 
     @Test
     fun `eta at exactly 0 ms shows Arr`() {
-        val info = BusInfo(
-            time = "", durationMs = 0,
-            lat = null, lng = null, load = "SEA", feature = null, type = "SD",
-            visitNumber = 1, originCode = null, destinationCode = null
-        )
+        val info =
+            BusInfo(
+                time = "",
+                durationMs = 0,
+                lat = null,
+                lng = null,
+                load = "SEA",
+                feature = null,
+                type = "SD",
+                visitNumber = 1,
+                originCode = null,
+                destinationCode = null,
+            )
         val display = info.toDisplayArrival()
         assertEquals("Arr.", display.eta)
     }

@@ -1,37 +1,47 @@
 package com.bushop.sg.ui.screens
 
-
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.contract.ActivityResultContracts
+import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.animateColorAsState
+import androidx.compose.animation.core.tween
+import androidx.compose.animation.expandVertically
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
+import androidx.compose.animation.shrinkVertically
+import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
-import androidx.compose.ui.unit.LayoutDirection
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
-import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.rememberLazyListState
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.filled.Sort
+import androidx.compose.material.icons.automirrored.outlined.Sort
 import androidx.compose.material.icons.filled.Add
-import androidx.compose.material.icons.filled.Delete
-import androidx.compose.material.icons.filled.MyLocation
-import androidx.compose.material.icons.outlined.Accessibility
 import androidx.compose.material.icons.filled.BrightnessAuto
 import androidx.compose.material.icons.filled.Check
 import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.DarkMode
+import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.DirectionsBus
-import androidx.compose.material.icons.filled.Settings
 import androidx.compose.material.icons.filled.LightMode
+import androidx.compose.material.icons.filled.MyLocation
 import androidx.compose.material.icons.filled.Refresh
-import androidx.compose.material.icons.automirrored.filled.Sort
-import androidx.compose.material.icons.automirrored.outlined.Sort
+import androidx.compose.material.icons.filled.Settings
+import androidx.compose.material.icons.outlined.Accessibility
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
@@ -44,25 +54,15 @@ import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.RadioButton
 import androidx.compose.material3.Scaffold
-import androidx.compose.material3.pulltorefresh.PullToRefreshDefaults
-import androidx.compose.material3.pulltorefresh.PullToRefreshBox
-import androidx.compose.material3.pulltorefresh.rememberPullToRefreshState
 import androidx.compose.material3.SnackbarHost
 import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.material3.TopAppBarDefaults
-import kotlinx.coroutines.delay
-import androidx.compose.animation.AnimatedVisibility
-import androidx.compose.animation.animateColorAsState
-import androidx.compose.animation.core.tween
-import androidx.compose.animation.expandVertically
-import androidx.compose.animation.shrinkVertically
-import androidx.compose.animation.fadeIn
-import androidx.compose.animation.fadeOut
+import androidx.compose.material3.pulltorefresh.PullToRefreshBox
+import androidx.compose.material3.pulltorefresh.PullToRefreshDefaults
+import androidx.compose.material3.pulltorefresh.rememberPullToRefreshState
 import androidx.compose.runtime.Composable
-import androidx.activity.compose.rememberLauncherForActivityResult
-import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
@@ -71,39 +71,41 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.foundation.background
-import androidx.compose.foundation.clickable
-import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.ui.input.nestedscroll.nestedScroll
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.input.nestedscroll.nestedScroll
+import androidx.compose.ui.layout.onGloballyPositioned
 import androidx.compose.ui.layout.positionInRoot
 import androidx.compose.ui.platform.LocalDensity
-import androidx.compose.ui.layout.onGloballyPositioned
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.unit.LayoutDirection
 import androidx.compose.ui.unit.dp
+import com.bushop.sg.BuildConfig
 import com.bushop.sg.data.api.UpdateInfo
 import com.bushop.sg.data.local.BusStopEntry
 import com.bushop.sg.domain.model.ColorSchemeOption
 import com.bushop.sg.domain.model.ThemeMode
 import com.bushop.sg.ui.components.AddBusStopDialog
-import com.bushop.sg.BuildConfig
 import com.bushop.sg.ui.components.BusStopCard
+import kotlinx.coroutines.delay
 
-private val timeFormatter = java.time.format.DateTimeFormatter.ofPattern("HH:mm")
+private val timeFormatter =
+    java.time.format.DateTimeFormatter
+        .ofPattern("HH:mm")
 
 private fun formatLastUpdated(timestamp: Long): String {
-    val zdt = java.time.ZonedDateTime.ofInstant(
-        java.time.Instant.ofEpochMilli(timestamp),
-        java.time.ZoneId.systemDefault()
-    )
+    val zdt =
+        java.time.ZonedDateTime.ofInstant(
+            java.time.Instant.ofEpochMilli(timestamp),
+            java.time.ZoneId.systemDefault(),
+        )
     return timeFormatter.format(zdt)
 }
 
 @Composable
 private fun ApiStatusBanner(
     status: ApiStatus,
-    onDismiss: () -> Unit
+    onDismiss: () -> Unit,
 ) {
     val visible = status != ApiStatus.Healthy
     val bgColor: androidx.compose.ui.graphics.Color
@@ -117,12 +119,14 @@ private fun ApiStatusBanner(
             message = ""
             showDismiss = false
         }
+
         ApiStatus.Degraded -> {
             bgColor = MaterialTheme.colorScheme.tertiaryContainer
             textColor = MaterialTheme.colorScheme.onTertiaryContainer
             message = "Bus arrival data may be delayed"
             showDismiss = false
         }
+
         ApiStatus.Down -> {
             bgColor = MaterialTheme.colorScheme.errorContainer
             textColor = MaterialTheme.colorScheme.onErrorContainer
@@ -134,24 +138,25 @@ private fun ApiStatusBanner(
     AnimatedVisibility(
         visible = visible,
         enter = fadeIn(),
-        exit = fadeOut()
+        exit = fadeOut(),
     ) {
         Card(
             colors = CardDefaults.cardColors(containerColor = bgColor),
             shape = RoundedCornerShape(8.dp),
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(horizontal = 16.dp, vertical = 8.dp)
+            modifier =
+                Modifier
+                    .fillMaxWidth()
+                    .padding(horizontal = 16.dp, vertical = 8.dp),
         ) {
             Row(
                 modifier = Modifier.padding(12.dp),
-                verticalAlignment = Alignment.CenterVertically
+                verticalAlignment = Alignment.CenterVertically,
             ) {
                 Text(
                     text = message,
                     style = MaterialTheme.typography.bodySmall,
                     color = textColor,
-                    modifier = Modifier.weight(1f)
+                    modifier = Modifier.weight(1f),
                 )
                 if (showDismiss) {
                     IconButton(onClick = onDismiss, modifier = Modifier.size(24.dp)) {
@@ -159,7 +164,7 @@ private fun ApiStatusBanner(
                             Icons.Filled.Close,
                             contentDescription = "Dismiss",
                             tint = textColor,
-                            modifier = Modifier.size(18.dp)
+                            modifier = Modifier.size(18.dp),
                         )
                     }
                 }
@@ -216,13 +221,14 @@ fun MainScreen(viewModel: MainViewModel) {
     val onSettingsClick = remember { { showSettings = true } }
 
     // ── Nearby stops permission launcher ──
-    val nearbyLauncher = rememberLauncherForActivityResult(
-        contract = ActivityResultContracts.RequestMultiplePermissions()
-    ) { granted ->
-        if (granted.values.any { it }) {
-            viewModel.findNearbyStops()
+    val nearbyLauncher =
+        rememberLauncherForActivityResult(
+            contract = ActivityResultContracts.RequestMultiplePermissions(),
+        ) { granted ->
+            if (granted.values.any { it }) {
+                viewModel.findNearbyStops()
+            }
         }
-    }
     var showNearbyDialog by remember { mutableStateOf(false) }
 
     Scaffold(
@@ -231,21 +237,21 @@ fun MainScreen(viewModel: MainViewModel) {
         topBar = {
             CenterAlignedTopAppBar(
                 scrollBehavior = scrollBehavior,
-                title = { 
+                title = {
                     Row(
                         verticalAlignment = Alignment.CenterVertically,
-                        horizontalArrangement = Arrangement.Center
+                        horizontalArrangement = Arrangement.Center,
                     ) {
                         Icon(
                             imageVector = Icons.Default.DirectionsBus,
                             contentDescription = null,
                             modifier = Modifier.size(28.dp),
-                            tint = MaterialTheme.colorScheme.primary
+                            tint = MaterialTheme.colorScheme.primary,
                         )
                         Spacer(modifier = Modifier.width(8.dp))
                         Text(
                             text = "BusHop",
-                            style = MaterialTheme.typography.headlineMedium
+                            style = MaterialTheme.typography.headlineMedium,
                         )
                     }
                 },
@@ -254,82 +260,87 @@ fun MainScreen(viewModel: MainViewModel) {
                         Icon(
                             imageVector = if (sortByEarliest) Icons.AutoMirrored.Filled.Sort else Icons.AutoMirrored.Outlined.Sort,
                             contentDescription = "Sort",
-                            tint = if (sortByEarliest) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant
+                            tint = if (sortByEarliest) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant,
                         )
                     }
                     IconButton(onClick = onThemeClick) {
                         Icon(
-                            imageVector = when (themeMode) {
-                                ThemeMode.SYSTEM -> Icons.Default.BrightnessAuto
-                                ThemeMode.LIGHT -> Icons.Default.LightMode
-                                ThemeMode.DARK -> Icons.Default.DarkMode
-                            },
-                            contentDescription = when (themeMode) {
-                                ThemeMode.SYSTEM -> "Auto theme"
-                                ThemeMode.LIGHT -> "Light mode"
-                                ThemeMode.DARK -> "Dark mode"
-                            },
-                            tint = when (themeMode) {
-                                ThemeMode.SYSTEM -> MaterialTheme.colorScheme.onSurfaceVariant
-                                ThemeMode.LIGHT -> MaterialTheme.colorScheme.onSurfaceVariant
-                                ThemeMode.DARK -> MaterialTheme.colorScheme.primary
-                            }
+                            imageVector =
+                                when (themeMode) {
+                                    ThemeMode.SYSTEM -> Icons.Default.BrightnessAuto
+                                    ThemeMode.LIGHT -> Icons.Default.LightMode
+                                    ThemeMode.DARK -> Icons.Default.DarkMode
+                                },
+                            contentDescription =
+                                when (themeMode) {
+                                    ThemeMode.SYSTEM -> "Auto theme"
+                                    ThemeMode.LIGHT -> "Light mode"
+                                    ThemeMode.DARK -> "Dark mode"
+                                },
+                            tint =
+                                when (themeMode) {
+                                    ThemeMode.SYSTEM -> MaterialTheme.colorScheme.onSurfaceVariant
+                                    ThemeMode.LIGHT -> MaterialTheme.colorScheme.onSurfaceVariant
+                                    ThemeMode.DARK -> MaterialTheme.colorScheme.primary
+                                },
                         )
                     }
                     IconButton(onClick = onRefreshClick) {
                         Icon(
                             imageVector = Icons.Default.Refresh,
                             contentDescription = "Refresh",
-                            tint = MaterialTheme.colorScheme.primary
+                            tint = MaterialTheme.colorScheme.primary,
                         )
                     }
                     IconButton(onClick = onSettingsClick) {
                         Icon(
                             imageVector = Icons.Default.Settings,
-                            contentDescription = "Settings"
+                            contentDescription = "Settings",
                         )
                     }
                 },
-                colors = TopAppBarDefaults.centerAlignedTopAppBarColors(
-                    containerColor = MaterialTheme.colorScheme.surface.copy(alpha = 0.80f),
-                    titleContentColor = MaterialTheme.colorScheme.onBackground,
-                    scrolledContainerColor = MaterialTheme.colorScheme.surface.copy(alpha = 0.85f)
-                )
+                colors =
+                    TopAppBarDefaults.centerAlignedTopAppBarColors(
+                        containerColor = MaterialTheme.colorScheme.surface.copy(alpha = 0.80f),
+                        titleContentColor = MaterialTheme.colorScheme.onBackground,
+                        scrolledContainerColor = MaterialTheme.colorScheme.surface.copy(alpha = 0.85f),
+                    ),
             )
         },
         floatingActionButton = {
             FloatingActionButton(
                 onClick = { viewModel.showAddStopDialog() },
-                containerColor = MaterialTheme.colorScheme.primary
+                containerColor = MaterialTheme.colorScheme.primary,
             ) {
                 Icon(
                     imageVector = Icons.Default.Add,
                     contentDescription = "Add bus stop",
-                    tint = MaterialTheme.colorScheme.onPrimary
+                    tint = MaterialTheme.colorScheme.onPrimary,
                 )
             }
-        }
+        },
     ) { paddingValues ->
         Box(
-            modifier = Modifier
-                .fillMaxSize()
-        .padding(
-            start = paddingValues.calculateLeftPadding(LayoutDirection.Ltr),
-            top = paddingValues.calculateTopPadding(),
-            end = paddingValues.calculateRightPadding(LayoutDirection.Ltr),
-            bottom = paddingValues.calculateBottomPadding()
-        )
+            modifier =
+                Modifier
+                    .fillMaxSize()
+                    .padding(
+                        start = paddingValues.calculateLeftPadding(LayoutDirection.Ltr),
+                        top = paddingValues.calculateTopPadding(),
+                        end = paddingValues.calculateRightPadding(LayoutDirection.Ltr),
+                        bottom = paddingValues.calculateBottomPadding(),
+                    ),
         ) {
             Column(modifier = Modifier.fillMaxSize()) {
                 ApiStatusBanner(
                     status = apiStatus,
-                    onDismiss = { viewModel.dismissApiBanner() }
+                    onDismiss = { viewModel.dismissApiBanner() },
                 )
                 Box(modifier = Modifier.weight(1f).fillMaxWidth()) {
                     if (!isIndexReady) {
                         Box(
                             modifier = Modifier.fillMaxSize(),
-                            contentAlignment = Alignment.Center
+                            contentAlignment = Alignment.Center,
                         ) {
                             Column(horizontalAlignment = Alignment.CenterHorizontally) {
                                 CircularProgressIndicator(modifier = Modifier.size(32.dp))
@@ -337,8 +348,8 @@ fun MainScreen(viewModel: MainViewModel) {
                                 Text(
                                     text = "Loading stops…",
                                     style = MaterialTheme.typography.bodyMedium,
-                                    color = MaterialTheme.colorScheme.onSurfaceVariant
-                            )
+                                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                )
                             }
                         }
                     } else if (savedStops.isEmpty()) {
@@ -348,7 +359,7 @@ fun MainScreen(viewModel: MainViewModel) {
                                 modifier = Modifier.align(Alignment.Center),
                                 style = MaterialTheme.typography.bodyLarge,
                                 color = MaterialTheme.colorScheme.onSurfaceVariant,
-                                textAlign = TextAlign.Center
+                                textAlign = TextAlign.Center,
                             )
                         }
                     } else {
@@ -356,14 +367,18 @@ fun MainScreen(viewModel: MainViewModel) {
                             LazyColumn(
                                 state = listState,
                                 modifier = Modifier.fillMaxSize(),
-                                contentPadding = PaddingValues(
-                                    start = 16.dp, end = 16.dp, top = 16.dp, bottom = 40.dp
-                                ),
-                                verticalArrangement = Arrangement.spacedBy(12.dp)
+                                contentPadding =
+                                    PaddingValues(
+                                        start = 16.dp,
+                                        end = 16.dp,
+                                        top = 16.dp,
+                                        bottom = 40.dp,
+                                    ),
+                                verticalArrangement = Arrangement.spacedBy(12.dp),
                             ) {
                                 items(
                                     items = savedStops,
-                                    key = { it.busStop.code }
+                                    key = { it.busStop.code },
                                 ) { stopWithArrivals ->
                                     BusStopCard(
                                         modifier = Modifier.animateItem(),
@@ -375,9 +390,11 @@ fun MainScreen(viewModel: MainViewModel) {
                                         onTogglePinService = { serviceNo ->
                                             viewModel.togglePinService(stopWithArrivals.busStop.code, serviceNo)
                                         },
-                                        pinnedServiceNos = pinnedServices
-                                            .filter { it.startsWith("${stopWithArrivals.busStop.code}:") }
-                                            .map { it.substringAfter(":") }.toSet(),
+                                        pinnedServiceNos =
+                                            pinnedServices
+                                                .filter { it.startsWith("${stopWithArrivals.busStop.code}:") }
+                                                .map { it.substringAfter(":") }
+                                                .toSet(),
                                         onMoveStop = { delta ->
                                             viewModel.moveStop(stopWithArrivals.busStop.code, delta)
                                         },
@@ -388,11 +405,12 @@ fun MainScreen(viewModel: MainViewModel) {
                                         onDragProgress = { code, lastTotalY, draggedCenterY ->
                                             if (draggedCode == code) {
                                                 val hasMeasuredDeleteZone = deleteZoneTopPx.isFinite()
-                                                isDragOverDeleteZone = if (hasMeasuredDeleteZone) {
-                                                    draggedCenterY >= deleteZoneTopPx
-                                                } else {
-                                                    lastTotalY > (savedStops.size * dragItemHeightPx) + deleteZoneThresholdPx
-                                                }
+                                                isDragOverDeleteZone =
+                                                    if (hasMeasuredDeleteZone) {
+                                                        draggedCenterY >= deleteZoneTopPx
+                                                    } else {
+                                                        lastTotalY > (savedStops.size * dragItemHeightPx) + deleteZoneThresholdPx
+                                                    }
                                             }
                                         },
                                         onDragEnd = { code, lastTotalY ->
@@ -407,141 +425,146 @@ fun MainScreen(viewModel: MainViewModel) {
                                             draggedCode = null
                                             isDragOverDeleteZone = false
                                         },
-                                        isDeleteTargeted = draggedCode == stopWithArrivals.busStop.code && isDragOverDeleteZone
+                                        isDeleteTargeted = draggedCode == stopWithArrivals.busStop.code && isDragOverDeleteZone,
                                     )
                                 }
                             }
                         }
 
-                        if (draggedCode != null) {
+                        PullToRefreshBox(
+                            isRefreshing = viewModel.isRefreshing,
+                            onRefresh = {
+                                if (draggedCode == null) viewModel.refreshAll()
+                            },
+                            state = pullToRefreshState,
+                            indicator = {
+                                PullToRefreshDefaults.Indicator(
+                                    modifier = Modifier.align(Alignment.TopCenter),
+                                    isRefreshing = viewModel.isRefreshing,
+                                    state = pullToRefreshState,
+                                    color = MaterialTheme.colorScheme.primary,
+                                    containerColor = MaterialTheme.colorScheme.primaryContainer,
+                                )
+                            },
+                        ) {
                             stopListContent()
-                        } else {
-                            PullToRefreshBox(
-                                isRefreshing = viewModel.isRefreshing,
-                                onRefresh = { viewModel.refreshAll() },
-                                state = pullToRefreshState,
-                                indicator = {
-                                    PullToRefreshDefaults.Indicator(
-                                        modifier = Modifier.align(Alignment.TopCenter),
-                                        isRefreshing = viewModel.isRefreshing,
-                                        state = pullToRefreshState,
-                                        color = MaterialTheme.colorScheme.primary,
-                                        containerColor = MaterialTheme.colorScheme.primaryContainer
-                                    )
-                                }
-                            ) {
-                                stopListContent()
-                            }
                         }
                     }
-                }  // close weight(1f) Box
-            }  // close Column
+                } // close weight(1f) Box
+            } // close Column
 
-        // ── First-time hint (tap to expand, auto-dismiss 5s, never again) ──
-        val hintVisible = !viewModel.hasSeenDragHint && savedStops.isNotEmpty() && draggedCode == null
-        LaunchedEffect(hintVisible) {
-            if (hintVisible) {
-                delay(5000)
-                viewModel.dismissHint()
+            // ── First-time hint (tap to expand, auto-dismiss 5s, never again) ──
+            val hintVisible = !viewModel.hasSeenDragHint && savedStops.isNotEmpty() && draggedCode == null
+            LaunchedEffect(hintVisible) {
+                if (hintVisible) {
+                    delay(5000)
+                    viewModel.dismissHint()
+                }
             }
-        }
-        AnimatedVisibility(
-            visible = hintVisible,
-            enter = fadeIn() + expandVertically(),
-            exit = fadeOut() + shrinkVertically()
-        ) {
-            Box(
-                modifier = Modifier
-                    .align(Alignment.TopCenter)
-                    .padding(top = 8.dp)
-                    .clickable { viewModel.dismissHint() }
-                    .clip(RoundedCornerShape(12.dp))
-                    .background(MaterialTheme.colorScheme.secondaryContainer)
-                    .padding(horizontal = 20.dp, vertical = 10.dp)
-            ) {
-                Text(
-                    text = "Tip: Tap a bus stop to see arrival times",
-                    style = MaterialTheme.typography.bodyMedium,
-                    color = MaterialTheme.colorScheme.onSecondaryContainer
-                )
-            }
-        }
-
-        if (viewModel.lastUpdatedAll > 0) {
-            val pillBg by animateColorAsState(
-                targetValue = if (viewModel.isRefreshing)
-                    MaterialTheme.colorScheme.primary.copy(alpha = 0.25f)
-                else
-                    MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.8f),
-                animationSpec = tween(durationMillis = 300)
-            )
-            Row(
-                modifier = Modifier
-                    .align(Alignment.BottomStart)
-                    .padding(start = 16.dp, bottom = 16.dp),
-                verticalAlignment = Alignment.CenterVertically,
-                horizontalArrangement = Arrangement.spacedBy(6.dp)
+            AnimatedVisibility(
+                visible = hintVisible,
+                enter = fadeIn() + expandVertically(),
+                exit = fadeOut() + shrinkVertically(),
             ) {
                 Box(
-                    modifier = Modifier
-                        .clip(RoundedCornerShape(8.dp))
-                        .background(pillBg)
-                        .padding(horizontal = 10.dp, vertical = 6.dp)
+                    modifier =
+                        Modifier
+                            .align(Alignment.TopCenter)
+                            .padding(top = 8.dp)
+                            .clickable { viewModel.dismissHint() }
+                            .clip(RoundedCornerShape(12.dp))
+                            .background(MaterialTheme.colorScheme.secondaryContainer)
+                            .padding(horizontal = 20.dp, vertical = 10.dp),
                 ) {
                     Text(
-                        text = buildString {
-                            append("Updated: ${formatLastUpdated(viewModel.lastUpdatedAll)}")
-                            if (savedStops.any { it.isStale }) {
-                                append("  •  Some data may be stale")
-                            }
-                        },
-                        style = MaterialTheme.typography.labelSmall,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                        text = "Tip: Tap a bus stop to see arrival times",
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = MaterialTheme.colorScheme.onSecondaryContainer,
                     )
                 }
             }
-        }
-         // ── Drag-to-delete zone overlay ──
-         if (draggedCode != null) {
-             val deleteZoneColor = if (isDragOverDeleteZone) {
-                 MaterialTheme.colorScheme.error.copy(alpha = 0.9f)
-             } else {
-                 MaterialTheme.colorScheme.errorContainer.copy(alpha = 0.75f)
-             }
-             Box(
-                 modifier = Modifier
-                     .align(Alignment.BottomCenter)
-                     .fillMaxWidth()
-                     .height(80.dp)
-                     .onGloballyPositioned { coordinates ->
-                         deleteZoneTopPx = coordinates.positionInRoot().y
-                     }
-                     .background(deleteZoneColor)
-                     .padding(16.dp),
-                 contentAlignment = Alignment.Center
-             ) {
-                 Row(
-                     verticalAlignment = Alignment.CenterVertically,
-                     horizontalArrangement = Arrangement.spacedBy(8.dp)
-                 ) {
-                     Icon(
-                         imageVector = Icons.Default.Delete,
-                         contentDescription = null,
-                         tint = MaterialTheme.colorScheme.onErrorContainer
-                     )
-                     Text(
-                         text = if (isDragOverDeleteZone) "Release to delete" else "Drag here to delete",
-                         style = MaterialTheme.typography.titleSmall,
-                         color = MaterialTheme.colorScheme.onErrorContainer,
-                         fontWeight = FontWeight.Bold
-                     )
-                 }
-             }
-         }
-         }  // close outer Box
-     }  // close Scaffold content
- 
-     if (showSettings) {
+
+            if (viewModel.lastUpdatedAll > 0) {
+                val pillBg by animateColorAsState(
+                    targetValue =
+                        if (viewModel.isRefreshing) {
+                            MaterialTheme.colorScheme.primary.copy(alpha = 0.25f)
+                        } else {
+                            MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.8f)
+                        },
+                    animationSpec = tween(durationMillis = 300),
+                )
+                Row(
+                    modifier =
+                        Modifier
+                            .align(Alignment.BottomStart)
+                            .padding(start = 16.dp, bottom = 16.dp),
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(6.dp),
+                ) {
+                    Box(
+                        modifier =
+                            Modifier
+                                .clip(RoundedCornerShape(8.dp))
+                                .background(pillBg)
+                                .padding(horizontal = 10.dp, vertical = 6.dp),
+                    ) {
+                        Text(
+                            text =
+                                buildString {
+                                    append("Updated: ${formatLastUpdated(viewModel.lastUpdatedAll)}")
+                                    if (savedStops.any { it.isStale }) {
+                                        append("  •  Some data may be stale")
+                                    }
+                                },
+                            style = MaterialTheme.typography.labelSmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        )
+                    }
+                }
+            }
+            // ── Drag-to-delete zone overlay ──
+            if (draggedCode != null) {
+                val deleteZoneColor =
+                    if (isDragOverDeleteZone) {
+                        MaterialTheme.colorScheme.error.copy(alpha = 0.9f)
+                    } else {
+                        MaterialTheme.colorScheme.errorContainer.copy(alpha = 0.75f)
+                    }
+                Box(
+                    modifier =
+                        Modifier
+                            .align(Alignment.BottomCenter)
+                            .fillMaxWidth()
+                            .height(80.dp)
+                            .onGloballyPositioned { coordinates ->
+                                deleteZoneTopPx = coordinates.positionInRoot().y
+                            }.background(deleteZoneColor)
+                            .padding(16.dp),
+                    contentAlignment = Alignment.Center,
+                ) {
+                    Row(
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.spacedBy(8.dp),
+                    ) {
+                        Icon(
+                            imageVector = Icons.Default.Delete,
+                            contentDescription = null,
+                            tint = MaterialTheme.colorScheme.onErrorContainer,
+                        )
+                        Text(
+                            text = if (isDragOverDeleteZone) "Release to delete" else "Drag here to delete",
+                            style = MaterialTheme.typography.titleSmall,
+                            color = MaterialTheme.colorScheme.onErrorContainer,
+                            fontWeight = FontWeight.Bold,
+                        )
+                    }
+                }
+            }
+        } // close outer Box
+    } // close Scaffold content
+
+    if (showSettings) {
         SettingsSheet(
             currentTheme = themeMode,
             currentInterval = viewModel.autoRefreshIntervalSeconds,
@@ -557,7 +580,7 @@ fun MainScreen(viewModel: MainViewModel) {
             isDownloadingUpdate = viewModel.isDownloadingUpdate,
             updateInfo = viewModel.updateInfo,
             onDownloadUpdate = { viewModel.downloadAndInstallUpdate() },
-            onDismiss = { showSettings = false }
+            onDismiss = { showSettings = false },
         )
     }
 
@@ -583,29 +606,32 @@ fun MainScreen(viewModel: MainViewModel) {
             },
             onConfirm = { code, name ->
                 // If name equals code (manual entry), try to find the real name
-                val resolvedName = if (name == code) {
-                    viewModel.findBusStopByCode(code)?.name ?: name
-                } else {
-                    name
-                }
+                val resolvedName =
+                    if (name == code) {
+                        viewModel.findBusStopByCode(code)?.name ?: name
+                    } else {
+                        name
+                    }
                 viewModel.addBusStop(code, resolvedName)
-            }
+            },
         )
     }
 
     if (deleteTarget != null) {
         val targetStop = savedStops.find { it.busStop.code == deleteTarget }
         val isPinned = targetStop?.isPinned == true
-        
+
         AlertDialog(
             onDismissRequest = { deleteTarget = null },
             title = { Text(if (isPinned) "Pinned Bus Stop" else "Delete Bus Stop?") },
-            text = { 
-                Text(if (isPinned) {
-                    "Bus stop $deleteTarget is pinned. Unpin first before deleting."
-                } else {
-                    "Are you sure you want to delete bus stop $deleteTarget? This cannot be undone."
-                }) 
+            text = {
+                Text(
+                    if (isPinned) {
+                        "Bus stop $deleteTarget is pinned. Unpin first before deleting."
+                    } else {
+                        "Are you sure you want to delete bus stop $deleteTarget? This cannot be undone."
+                    },
+                )
             },
             confirmButton = {
                 val target = deleteTarget ?: return@AlertDialog
@@ -614,7 +640,7 @@ fun MainScreen(viewModel: MainViewModel) {
                         onClick = {
                             viewModel.togglePin(target)
                             deleteTarget = null
-                        }
+                        },
                     ) {
                         Text("Unpin")
                     }
@@ -623,7 +649,7 @@ fun MainScreen(viewModel: MainViewModel) {
                         onClick = {
                             viewModel.removeBusStop(target)
                             deleteTarget = null
-                        }
+                        },
                     ) {
                         Text("Delete", color = MaterialTheme.colorScheme.error)
                     }
@@ -633,7 +659,7 @@ fun MainScreen(viewModel: MainViewModel) {
                 TextButton(onClick = { deleteTarget = null }) {
                     Text("Cancel")
                 }
-            }
+            },
         )
     }
 }
@@ -651,7 +677,7 @@ private fun SettingsSheet(
     isDownloadingUpdate: Boolean,
     updateInfo: UpdateInfo?,
     onDownloadUpdate: () -> Unit,
-    onDismiss: () -> Unit
+    onDismiss: () -> Unit,
 ) {
     AlertDialog(
         onDismissRequest = onDismiss,
@@ -663,21 +689,32 @@ private fun SettingsSheet(
                 ThemeMode.entries.forEach { mode ->
                     Row(
                         verticalAlignment = Alignment.CenterVertically,
-                        modifier = Modifier.fillMaxWidth().clickable { onThemeChange(mode) }
+                        modifier = Modifier.fillMaxWidth().clickable { onThemeChange(mode) },
                     ) {
                         RadioButton(selected = currentTheme == mode, onClick = { onThemeChange(mode) })
                         Spacer(modifier = Modifier.width(4.dp))
-                        Text(text = when (mode) { ThemeMode.SYSTEM -> "System"; ThemeMode.LIGHT -> "Light"; ThemeMode.DARK -> "Dark" })
+                        Text(
+                            text =
+                                when (mode) {
+                                    ThemeMode.SYSTEM -> "System"
+                                    ThemeMode.LIGHT -> "Light"
+                                    ThemeMode.DARK -> "Dark"
+                                },
+                        )
                     }
                 }
                 Spacer(modifier = Modifier.height(16.dp))
-                Text("Auto Refresh", style = MaterialTheme.typography.titleSmall, fontWeight = androidx.compose.ui.text.font.FontWeight.SemiBold)
+                Text(
+                    "Auto Refresh",
+                    style = MaterialTheme.typography.titleSmall,
+                    fontWeight = androidx.compose.ui.text.font.FontWeight.SemiBold,
+                )
                 Spacer(modifier = Modifier.height(4.dp))
                 val intervals = listOf(0 to "Off", 30 to "30s", 60 to "1m", 120 to "2m", 300 to "5m")
                 intervals.forEach { (seconds, label) ->
                     Row(
                         verticalAlignment = Alignment.CenterVertically,
-                        modifier = Modifier.fillMaxWidth().clickable { onIntervalChange(seconds) }
+                        modifier = Modifier.fillMaxWidth().clickable { onIntervalChange(seconds) },
                     ) {
                         RadioButton(selected = currentInterval == seconds, onClick = { onIntervalChange(seconds) })
                         Spacer(modifier = Modifier.width(4.dp))
@@ -685,12 +722,16 @@ private fun SettingsSheet(
                     }
                 }
                 Spacer(modifier = Modifier.height(16.dp))
-                Text("Colour Scheme", style = MaterialTheme.typography.titleSmall, fontWeight = androidx.compose.ui.text.font.FontWeight.SemiBold)
+                Text(
+                    "Colour Scheme",
+                    style = MaterialTheme.typography.titleSmall,
+                    fontWeight = androidx.compose.ui.text.font.FontWeight.SemiBold,
+                )
                 Spacer(modifier = Modifier.height(4.dp))
                 ColorSchemeOption.entries.forEach { option ->
                     Row(
                         verticalAlignment = Alignment.CenterVertically,
-                        modifier = Modifier.fillMaxWidth().clickable { onColorSchemeChange(option) }
+                        modifier = Modifier.fillMaxWidth().clickable { onColorSchemeChange(option) },
                     ) {
                         RadioButton(selected = currentColorScheme == option, onClick = { onColorSchemeChange(option) })
                         Spacer(modifier = Modifier.width(4.dp))
@@ -698,15 +739,29 @@ private fun SettingsSheet(
                     }
                 }
                 Spacer(modifier = Modifier.height(16.dp))
-                Text("Icon Legend", style = MaterialTheme.typography.titleSmall, fontWeight = androidx.compose.ui.text.font.FontWeight.SemiBold)
+                Text(
+                    "Icon Legend",
+                    style = MaterialTheme.typography.titleSmall,
+                    fontWeight = androidx.compose.ui.text.font.FontWeight.SemiBold,
+                )
                 Spacer(modifier = Modifier.height(6.dp))
                 Row(verticalAlignment = Alignment.CenterVertically) {
-                    Icon(Icons.Outlined.Accessibility, contentDescription = null, modifier = Modifier.size(18.dp), tint = MaterialTheme.colorScheme.primary)
+                    Icon(
+                        Icons.Outlined.Accessibility,
+                        contentDescription = null,
+                        modifier = Modifier.size(18.dp),
+                        tint = MaterialTheme.colorScheme.primary,
+                    )
                     Spacer(Modifier.width(8.dp))
                     Text("Wheelchair accessible bus", style = MaterialTheme.typography.bodySmall)
                 }
                 Row(verticalAlignment = Alignment.CenterVertically) {
-                    Icon(Icons.Default.DirectionsBus, contentDescription = null, modifier = Modifier.size(18.dp), tint = MaterialTheme.colorScheme.onSurfaceVariant)
+                    Icon(
+                        Icons.Default.DirectionsBus,
+                        contentDescription = null,
+                        modifier = Modifier.size(18.dp),
+                        tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                    )
                     Spacer(Modifier.width(8.dp))
                     Text("Operator badge logo", style = MaterialTheme.typography.bodySmall)
                 }
@@ -716,13 +771,17 @@ private fun SettingsSheet(
                 Text(
                     text = "v${BuildConfig.VERSION_NAME}",
                     style = MaterialTheme.typography.bodySmall,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
                 )
                 TextButton(onClick = onCheckUpdate, enabled = !isCheckingUpdate) {
                     Text(if (isCheckingUpdate) "Checking…" else "Check for updates")
                 }
                 if (updateInfo != null) {
-                    Text("Update v${updateInfo.latestVersion} available", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.primary)
+                    Text(
+                        "Update v${updateInfo.latestVersion} available",
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.primary,
+                    )
                     Spacer(modifier = Modifier.height(4.dp))
                     TextButton(onClick = onDownloadUpdate, enabled = !isDownloadingUpdate) {
                         Text(if (isDownloadingUpdate) "Downloading…" else "Download & Install")
@@ -730,6 +789,6 @@ private fun SettingsSheet(
                 }
             }
         },
-        confirmButton = { TextButton(onClick = onDismiss) { Text("Done") } }
+        confirmButton = { TextButton(onClick = onDismiss) { Text("Done") } },
     )
 }

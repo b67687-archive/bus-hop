@@ -17,9 +17,8 @@ import kotlinx.coroutines.flow.StateFlow
 class BusRepositoryImpl(
     private val storage: BusStopStorage,
     private val dataSource: BusArrivalDataSource,
-    private val busStopIndex: BusStopIndex
+    private val busStopIndex: BusStopIndex,
 ) : BusRepository {
-
     override val savedBusStops: Flow<List<BusStop>> = storage.savedBusStops
 
     override val cachedBusServices: Flow<Map<String, List<BusService>>> = storage.getBusServicesFlow()
@@ -60,9 +59,7 @@ class BusRepositoryImpl(
         storage.savePinnedServices(pinned)
     }
 
-    override suspend fun addBusStop(stop: BusStop): Result<Unit> {
-        return storage.addBusStop(stop)
-    }
+    override suspend fun addBusStop(stop: BusStop): Result<Unit> = storage.addBusStop(stop)
 
     override suspend fun removeBusStop(code: String) {
         storage.removeBusStop(code)
@@ -73,14 +70,15 @@ class BusRepositoryImpl(
     }
 
     override suspend fun getBusArrivals(busStopCode: String): NetworkResult<List<BusService>> {
-        val result = retrySuspend {
-            runCatching<List<BusService>> {
-                val response = dataSource.getBusArrivals(busStopCode)
-                val services = response.services ?: emptyList()
-                storage.saveBusServices(busStopCode, services)
-                services
+        val result =
+            retrySuspend {
+                runCatching<List<BusService>> {
+                    val response = dataSource.getBusArrivals(busStopCode)
+                    val services = response.services ?: emptyList()
+                    storage.saveBusServices(busStopCode, services)
+                    services
+                }
             }
-        }
         return result.toNetworkResult("Fetch arrivals")
     }
 }

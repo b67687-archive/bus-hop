@@ -5,8 +5,7 @@ import com.bushop.sg.domain.model.BusArrivalResponse
 
 /** Production implementation backed by Retrofit + ArrivelahApi. */
 class RetrofitBusArrivalDataSource(
-    private val api: ArrivelahApi = ApiClient.api
+    private val api: ArrivelahApi = ApiClient.api,
 ) : BusArrivalDataSource {
-    override suspend fun getBusArrivals(busStopCode: String): BusArrivalResponse =
-        api.getBusArrivals(busStopCode).toDomain()
+    override suspend fun getBusArrivals(busStopCode: String): BusArrivalResponse = api.getBusArrivals(busStopCode).toDomain()
 }

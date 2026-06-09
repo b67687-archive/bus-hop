@@ -1,4 +1,6 @@
 package com.bushop.sg.domain.model
 
 /** Thrown when attempting to add a bus stop that already exists. */
-class DuplicateStopException(message: String) : Exception(message)
+class DuplicateStopException(
+    message: String,
+) : Exception(message)
