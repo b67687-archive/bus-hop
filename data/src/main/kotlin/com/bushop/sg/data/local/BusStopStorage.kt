@@ -26,6 +26,10 @@ private val Context.dataStore: DataStore<Preferences> by preferencesDataStore(na
 class BusStopStorage(
     private val context: Context,
 ) {
+    companion object {
+        private const val CACHE_TTL_MS = 24 * 60 * 60 * 1000L // 24 hours
+    }
+
     private val gson = Gson()
     private val busStopsKey = stringPreferencesKey("saved_bus_stops")
 
@@ -108,7 +112,7 @@ class BusStopStorage(
 
     /** Flow of [code -> List<BusService>] for stops with cached data (non-stale). */
     fun getBusServicesFlow(): Flow<Map<String, List<BusService>>> {
-        val ttlMs = 24 * 60 * 60 * 1000L
+        val ttlMs = CACHE_TTL_MS
         return context.dataStore.data
             .map { prefs -> parseServicesMap(prefs, ttlMs) }
             .distinctUntilChanged()
