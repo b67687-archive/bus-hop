@@ -346,61 +346,66 @@ fun BusStopCard(
                 }
             }
 
-            // Expanded services: animated expand/collapse normally, hidden instantly during drag
-            if (!isLocallyDragged) {
-                AnimatedVisibility(
-                    visible = !effectiveCollapsed,
-                    enter =
-                        fadeIn(animationSpec = tween(durationMillis = 280, easing = easing)) +
-                            expandVertically(animationSpec = tween(durationMillis = 280, easing = easing)),
-                    exit =
-                        fadeOut(animationSpec = tween(durationMillis = 150, easing = easing)) +
-                            shrinkVertically(animationSpec = tween(durationMillis = 150, easing = easing)),
+            // Expanded services: animated expand/collapse normally, invisible but in-layout during drag
+            // to prevent LazyColumn re-layout (which causes drag bounce).
+            val expandedServicesAlpha = if (isLocallyDragged) 0f else 1f
+            AnimatedVisibility(
+                visible = !effectiveCollapsed || isLocallyDragged,
+                enter =
+                    fadeIn(animationSpec = tween(durationMillis = 280, easing = easing)) +
+                        expandVertically(animationSpec = tween(durationMillis = 280, easing = easing)),
+                exit =
+                    fadeOut(animationSpec = tween(durationMillis = 150, easing = easing)) +
+                        shrinkVertically(animationSpec = tween(durationMillis = 150, easing = easing)),
+            ) {
+                Column(
+                    modifier =
+                        Modifier
+                            .padding(horizontal = 16.dp)
+                            .graphicsLayer { alpha = expandedServicesAlpha },
                 ) {
-                    Column(modifier = Modifier.padding(horizontal = 16.dp)) {
-                        Spacer(modifier = Modifier.height(8.dp))
+                    Spacer(modifier = Modifier.height(8.dp))
 
-                        when {
-                            isOffline -> {
-                                OfflineBanner(onRetry = onRefresh)
-                            }
+                    when {
+                        isOffline -> {
+                            OfflineBanner(onRetry = onRefresh)
+                        }
 
-                            error != null -> {
-                                ErrorBanner(message = error, onRetry = onRefresh)
-                            }
+                        error != null -> {
+                            ErrorBanner(message = error, onRetry = onRefresh)
+                        }
 
-                            services.isEmpty() && !isLoading -> {
-                                Text(
-                                    text = "No buses available",
-                                    style = MaterialTheme.typography.bodyMedium,
-                                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        services.isEmpty() && !isLoading -> {
+                            Text(
+                                text = "No buses available",
+                                style = MaterialTheme.typography.bodyMedium,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                            )
+                        }
+
+                        services.all { it.next == null && it.subsequent == null && it.next3 == null } && !isLoading -> {
+                            val now = java.util.Calendar.getInstance()
+                            val hour = now.get(java.util.Calendar.HOUR_OF_DAY)
+                            Text(
+                                text =
+                                    if (hour >= 23 || hour < 6) {
+                                        "All buses have stopped running for the night"
+                                    } else {
+                                        "No upcoming buses at this stop"
+                                    },
+                                style = MaterialTheme.typography.bodyMedium,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                            )
+                        }
+
+                        else -> {
+                            services.forEach { service ->
+                                BusServiceRow(
+                                    service = service,
+                                    isPinned = service.serviceNo in pinnedServiceNos,
+                                    onTogglePinService = { onTogglePinService(service.serviceNo) },
                                 )
-                            }
-
-                            services.all { it.next == null && it.subsequent == null && it.next3 == null } && !isLoading -> {
-                                val now = java.util.Calendar.getInstance()
-                                val hour = now.get(java.util.Calendar.HOUR_OF_DAY)
-                                Text(
-                                    text =
-                                        if (hour >= 23 || hour < 6) {
-                                            "All buses have stopped running for the night"
-                                        } else {
-                                            "No upcoming buses at this stop"
-                                        },
-                                    style = MaterialTheme.typography.bodyMedium,
-                                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                                )
-                            }
-
-                            else -> {
-                                services.forEach { service ->
-                                    BusServiceRow(
-                                        service = service,
-                                        isPinned = service.serviceNo in pinnedServiceNos,
-                                        onTogglePinService = { onTogglePinService(service.serviceNo) },
-                                    )
-                                    Spacer(modifier = Modifier.height(12.dp))
-                                }
+                                Spacer(modifier = Modifier.height(12.dp))
                             }
                         }
                     }
