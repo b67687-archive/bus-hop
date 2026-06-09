@@ -110,51 +110,54 @@ class BusStopStorage(
         }
     }
 
+    /** Extract stop codes that have cached services data (prefixed keys, excluding timestamps). */
+    private fun Preferences.cachedStopServiceCodes(): Set<String> {
+        val codes = mutableSetOf<String>()
+        asMap().forEach { (key, _) ->
+            if (key.name.startsWith("services_") && !key.name.endsWith("_ts")) {
+                codes.add(key.name.removePrefix("services_"))
+            }
+        }
+        return codes
+    }
+
     /** Flow of [code -> List<BusService>] for stops with cached data (non-stale). */
     fun getBusServicesFlow(): Flow<Map<String, List<BusService>>> {
         val ttlMs = CACHE_TTL_MS
         return context.dataStore.data
-            .map { prefs -> parseServicesMap(prefs, ttlMs) }
-            .distinctUntilChanged()
+            .map { prefs ->
+                val now = System.currentTimeMillis()
+                prefs
+                    .cachedStopServiceCodes()
+                    .mapNotNull { code ->
+                        val tsKey = stringPreferencesKey("services_${code}_ts")
+                        val ts = prefs[tsKey]?.toLongOrNull() ?: 0L
+                        if (now - ts > ttlMs) return@mapNotNull null
+                        val servicesKey = stringPreferencesKey("services_$code")
+                        try {
+                            val type = object : TypeToken<List<BusService>>() {}.type
+                            val value = prefs[servicesKey] as? String ?: return@mapNotNull null
+                            val services: List<BusService> = gson.fromJson(value, type) ?: emptyList()
+                            code to services
+                        } catch (e: Exception) {
+                            code to emptyList<BusService>()
+                        }
+                    }.toMap()
+            }.distinctUntilChanged()
     }
 
     /** Flow of [code -> cachedAt timestamp] for every stop with saved services. */
     val cachedTimestamps: Flow<Map<String, Long>> =
         context.dataStore.data
             .map { prefs ->
-                val result = mutableMapOf<String, Long>()
-                prefs.asMap().forEach { (key, value) ->
-                    if (key.name.startsWith("services_") && key.name.endsWith("_ts")) {
-                        val code = key.name.removePrefix("services_").removeSuffix("_ts")
-                        result[code] = (value as String).toLongOrNull() ?: 0L
-                    }
-                }
-                result
+                prefs
+                    .cachedStopServiceCodes()
+                    .mapNotNull { code ->
+                        val tsKey = stringPreferencesKey("services_${code}_ts")
+                        val ts = prefs[tsKey]?.toLongOrNull() ?: return@mapNotNull null
+                        code to ts
+                    }.toMap()
             }.distinctUntilChanged()
-
-    private fun parseServicesMap(
-        prefs: Preferences,
-        ttlMs: Long,
-    ): Map<String, List<BusService>> {
-        val now = System.currentTimeMillis()
-        val result = mutableMapOf<String, List<BusService>>()
-        prefs.asMap().forEach { (key, value) ->
-            if (key.name.startsWith("services_") && !key.name.endsWith("_ts")) {
-                val code = key.name.removePrefix("services_")
-                val tsKey = stringPreferencesKey("services_${code}_ts")
-                val ts = prefs[tsKey]?.toLongOrNull() ?: 0L
-                if (now - ts > ttlMs) return@forEach
-                try {
-                    val type = object : TypeToken<List<BusService>>() {}.type
-                    val services: List<BusService> = gson.fromJson(value as String, type) ?: emptyList()
-                    result[code] = services
-                } catch (e: Exception) {
-                    result[code] = emptyList()
-                }
-            }
-        }
-        return result
-    }
 
     suspend fun saveBusServices(
         code: String,
