@@ -1,5 +1,5 @@
 <div align="center">
-  <img src="docs/icon.svg" alt="BusHop-SG" width="96" height="96">
+  <img src="icon.svg" alt="BusHop-SG" width="96" height="96">
   <h1>BusHop-SG</h1>
   <p><strong>Lightweight Singapore bus timing app</strong></p>
   <p>Material 3 Compose UI with real-time arrivals, drag-to-reorder, pinning, and smart search.</p>
