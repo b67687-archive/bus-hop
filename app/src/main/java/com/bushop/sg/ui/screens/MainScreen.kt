@@ -196,12 +196,6 @@ fun MainScreen(viewModel: MainViewModel) {
     var draggedCode by remember { mutableStateOf<String?>(null) }
     var isDragOverDeleteZone by remember { mutableStateOf(false) }
     var deleteZoneTopPx by remember { mutableStateOf(Float.POSITIVE_INFINITY) }
-    val dragOffsetAnchorRef =
-        remember {
-            java.util.concurrent.atomic
-                .AtomicReference(0f)
-        }
-    var dragLastDelta by remember { mutableStateOf(0) } // last processed delta
     val density = LocalDensity.current
     val dragItemHeightPx = with(density) { 140.dp.toPx() }
     val deleteZoneThresholdPx = with(density) { 60.dp.toPx() }
@@ -419,16 +413,6 @@ fun MainScreen(viewModel: MainViewModel) {
                                         },
                                         onDragProgress = { code, lastTotalY, draggedCenterY ->
                                             if (draggedCode == code) {
-                                                // Live reorder: move item as finger crosses item boundaries
-                                                val delta = (lastTotalY / dragItemHeightPx).toInt()
-                                                if (delta != dragLastDelta) {
-                                                    val adjustment = delta - dragLastDelta
-                                                    if (adjustment != 0) {
-                                                        viewModel.moveStop(code, adjustment)
-                                                    }
-                                                    dragOffsetAnchorRef.set(dragOffsetAnchorRef.get() + adjustment * dragItemHeightPx)
-                                                    dragLastDelta = delta
-                                                }
                                                 // Delete zone detection
                                                 val hasMeasuredDeleteZone = deleteZoneTopPx.isFinite()
                                                 isDragOverDeleteZone =
@@ -444,14 +428,13 @@ fun MainScreen(viewModel: MainViewModel) {
                                             val shouldDelete = isDragOverDeleteZone || lastTotalY > deleteThreshold
                                             if (shouldDelete) {
                                                 viewModel.removeBusStop(code)
+                                            } else if (lastTotalY != 0f) {
+                                                val delta = (lastTotalY / dragItemHeightPx).toInt()
+                                                if (delta != 0) viewModel.moveStop(code, delta)
                                             }
-                                            // Note: reorder already handled during drag — no moveStop needed
                                             draggedCode = null
                                             isDragOverDeleteZone = false
-                                            dragOffsetAnchorRef.set(0f)
-                                            dragLastDelta = 0
                                         },
-                                        dragOffsetAnchorRef = dragOffsetAnchorRef,
                                         isDeleteTargeted = draggedCode == stopWithArrivals.busStop.code && isDragOverDeleteZone,
                                     )
                                 }
