@@ -12,5 +12,9 @@ data class BusStopWithArrivals(
     val isPinned: Boolean = false,
 ) {
     val isStale: Boolean get() =
-        cachedAt > 0 && (System.currentTimeMillis() - cachedAt) > 120_000 // 2 min
+        cachedAt > 0 && (System.currentTimeMillis() - cachedAt) > STALE_THRESHOLD_MS
+
+    companion object {
+        private const val STALE_THRESHOLD_MS = 120_000L // 2 min
+    }
 }

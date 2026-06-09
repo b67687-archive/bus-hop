@@ -34,6 +34,7 @@ import kotlinx.coroutines.flow.asSharedFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 import java.io.File
 import java.io.IOException
 
@@ -47,6 +48,12 @@ class MainViewModel(
     private val useCase: BusStopUseCase = BusStopUseCase(),
     private val refreshCoordinator: StopRefreshCoordinator = StopRefreshCoordinator(),
 ) : AndroidViewModel(application) {
+    companion object {
+        private const val DEFAULT_AUTO_REFRESH_INTERVAL = 30
+        private const val COLLAPSE_DEBOUNCE_MS = 500L
+        private const val PREFS_NAME = "bushop_prefs"
+    }
+
     private var isAutoRefreshing = false
 
     private val autoRefreshController = AutoRefreshController(viewModelScope)
@@ -64,7 +71,7 @@ class MainViewModel(
         private set
 
     private var saveCollapseJob: Job? = null
-    var autoRefreshIntervalSeconds by mutableStateOf(30)
+    var autoRefreshIntervalSeconds by mutableStateOf(DEFAULT_AUTO_REFRESH_INTERVAL)
         private set
 
     private val _sortByEarliest = MutableStateFlow(false)
@@ -186,14 +193,14 @@ class MainViewModel(
     private fun loadHintPref() {
         val prefs =
             getApplication<android.app.Application>()
-                .getSharedPreferences("bushop_prefs", 0)
+                .getSharedPreferences(PREFS_NAME, 0)
         hasSeenDragHint = prefs.getBoolean("has_seen_hint", false)
     }
 
     fun dismissHint() {
         hasSeenDragHint = true
         getApplication<android.app.Application>()
-            .getSharedPreferences("bushop_prefs", 0)
+            .getSharedPreferences(PREFS_NAME, 0)
             .edit()
             .putBoolean("has_seen_hint", true)
             .apply()
@@ -417,12 +424,14 @@ class MainViewModel(
     }
 
     private suspend fun getBusArrivalsSafely(code: String): NetworkResult<List<com.bushop.sg.domain.model.BusService>> =
-        try {
-            repository.getBusArrivals(code)
-        } catch (e: CancellationException) {
-            throw e
-        } catch (e: Exception) {
-            NetworkResult.Error(e.message ?: "Unexpected error", e)
+        withContext(Dispatchers.IO) {
+            try {
+                repository.getBusArrivals(code)
+            } catch (e: CancellationException) {
+                throw e
+            } catch (e: Exception) {
+                NetworkResult.Error(e.message ?: "Unexpected error", e)
+            }
         }
 
     fun removeBusStop(code: String) {
@@ -612,7 +621,7 @@ class MainViewModel(
         saveCollapseJob?.cancel()
         saveCollapseJob =
             viewModelScope.launch {
-                delay(500)
+                delay(COLLAPSE_DEBOUNCE_MS)
                 repository.setCollapsedStops(collapsedCodes.toSet())
             }
     }
