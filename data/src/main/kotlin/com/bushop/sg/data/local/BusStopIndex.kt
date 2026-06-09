@@ -285,32 +285,30 @@ class BusStopIndex(
         }
 
         // Prefix matches on name tokens
-        for ((token, indices) in nameTokenIndex) {
-            if (token.length < 2) continue
-            if (token != qt.raw && token != qt.expanded &&
-                (
-                    token.startsWith(qt.raw) || (qt.raw.startsWith(token) && token.length >= 2) ||
-                        token.startsWith(qt.expanded) || (qt.expanded.startsWith(token) && token.length >= 2)
-                )
-            ) {
-                set.addAll(indices)
-            }
-        }
-
+        addPrefixMatches(nameTokenIndex, qt, set)
         // Prefix matches on road tokens
-        for ((token, indices) in roadTokenIndex) {
-            if (token.length < 2) continue
-            if (token != qt.raw && token != qt.expanded &&
-                (
-                    token.startsWith(qt.raw) || (qt.raw.startsWith(token) && token.length >= 2) ||
-                        token.startsWith(qt.expanded) || (qt.expanded.startsWith(token) && token.length >= 2)
-                )
-            ) {
-                set.addAll(indices)
-            }
-        }
+        addPrefixMatches(roadTokenIndex, qt, set)
 
         return set
+    }
+
+    /** Add all indices from [index] whose token has a prefix match with [qt]. */
+    private fun addPrefixMatches(
+        index: Map<String, List<Int>>,
+        qt: QueryToken,
+        target: MutableSet<Int>,
+    ) {
+        for ((token, indices) in index) {
+            if (token.length < 2) continue
+            if (token != qt.raw && token != qt.expanded &&
+                (
+                    token.startsWith(qt.raw) || (qt.raw.startsWith(token) && token.length >= 2) ||
+                        token.startsWith(qt.expanded) || (qt.expanded.startsWith(token) && token.length >= 2)
+                )
+            ) {
+                target.addAll(indices)
+            }
+        }
     }
 
     private fun qtInName(

@@ -270,14 +270,7 @@ class BusStopStorage(
             .map { prefs -> parsePinnedServices(prefs[stringPreferencesKey("pinned_services")]) }
             .distinctUntilChanged()
 
-    private fun parsePinnedServices(json: String?): Set<String> {
-        val text = json ?: return emptySet()
-        return try {
-            gson.fromJson(text, object : TypeToken<Set<String>>() {}.type) ?: emptySet()
-        } catch (e: Exception) {
-            emptySet()
-        }
-    }
+    private fun parsePinnedServices(json: String?): Set<String> = parseStringSet(json)
 
     suspend fun savePinnedServices(pinned: Set<String>) {
         context.dataStore.edit { prefs ->

@@ -50,6 +50,8 @@ class UpdateChecker {
                     releaseNotes = release.body?.take(500) ?: "",
                     hasUpdate = true,
                 )
+            } catch (e: kotlinx.coroutines.CancellationException) {
+                throw e
             } catch (_: Exception) {
                 null
             }
@@ -67,6 +69,8 @@ class UpdateChecker {
                 val body = response.body ?: return@withContext false
                 FileOutputStream(targetFile).use { output -> body.byteStream().use { it.copyTo(output) } }
                 true
+            } catch (e: kotlinx.coroutines.CancellationException) {
+                throw e
             } catch (_: Exception) {
                 false
             }

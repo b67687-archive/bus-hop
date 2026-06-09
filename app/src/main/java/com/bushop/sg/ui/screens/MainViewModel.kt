@@ -51,6 +51,8 @@ class MainViewModel(
         private const val DEFAULT_AUTO_REFRESH_INTERVAL = 30
         private const val COLLAPSE_DEBOUNCE_MS = 500L
         private const val PREFS_NAME = "bushop_prefs"
+        private const val DEGRADED_THRESHOLD = 3
+        private const val DOWN_THRESHOLD = 10
     }
 
     private var isAutoRefreshing = false
@@ -207,9 +209,6 @@ class MainViewModel(
             .apply()
     }
 
-    var downloadProgress by mutableStateOf(0f)
-        private set
-
     private val updateChecker = UpdateChecker()
 
     fun checkForUpdate() {
@@ -233,7 +232,6 @@ class MainViewModel(
         val info = updateInfo ?: return
         if (isDownloadingUpdate) return
         isDownloadingUpdate = true
-        downloadProgress = 0f
         viewModelScope.launch {
             try {
                 val targetFile = File(getApplication<android.app.Application>().cacheDir, "bus-hop-update.apk")
@@ -325,11 +323,7 @@ class MainViewModel(
                 }
             combine(baseFlow, _pinnedServices) { (stops, sortByEarliest), pinned ->
                 stops.map { stopWithArrivals ->
-                    val pinnedForStop =
-                        pinned
-                            .filter { it.startsWith("${stopWithArrivals.busStop.code}:") }
-                            .map { it.substringAfter(":") }
-                            .toSet()
+                    val pinnedForStop = pinnedServiceNosForStop(stopWithArrivals.busStop.code)
                     stopWithArrivals.copy(
                         services =
                             useCase.sortServicesWithPins(
@@ -492,8 +486,8 @@ class MainViewModel(
                 consecutiveFailures++
                 _apiStatus.value =
                     when {
-                        consecutiveFailures >= 10 -> ApiStatus.Down
-                        consecutiveFailures >= 3 -> ApiStatus.Degraded
+                        consecutiveFailures >= DOWN_THRESHOLD -> ApiStatus.Down
+                        consecutiveFailures >= DEGRADED_THRESHOLD -> ApiStatus.Degraded
                         else -> _apiStatus.value
                     }
                 if (!isAutoRefresh) {
@@ -517,11 +511,7 @@ class MainViewModel(
             is NetworkResult.Success -> {
                 consecutiveFailures = 0
                 _apiStatus.value = ApiStatus.Healthy
-                val pinnedForStop =
-                    _pinnedServices.value
-                        .filter { it.startsWith("$code:") }
-                        .map { it.substringAfter(":") }
-                        .toSet()
+                val pinnedForStop = pinnedServiceNosForStop(code)
                 val sortedServices = useCase.sortServicesWithPins(result.data, pinnedForStop, _sortByEarliest.value)
                 _savedStops.value =
                     _savedStops.value.toMutableList().apply {
@@ -658,6 +648,13 @@ class MainViewModel(
             },
         )
     }
+
+    /** Get service numbers pinned for a specific stop (strip the "$code:" prefix). */
+    private fun pinnedServiceNosForStop(stopCode: String): Set<String> =
+        _pinnedServices.value
+            .filter { it.startsWith("$stopCode:") }
+            .map { it.substringAfter(":") }
+            .toSet()
 
     fun isServicePinned(
         stopCode: String,

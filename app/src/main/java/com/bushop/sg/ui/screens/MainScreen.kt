@@ -197,7 +197,7 @@ fun MainScreen(viewModel: MainViewModel) {
     var deleteZoneTopPx by remember { mutableStateOf(Float.POSITIVE_INFINITY) }
 
     val density = LocalDensity.current
-    val dragItemHeightPx = with(density) { 140.dp.toPx() }
+    val dragItemHeightPx = remember { with(density) { 140.dp.toPx() } }
 
     // Scroll to top when a new stop is pinned
     var prevPinnedCount by remember { mutableStateOf(0) }
@@ -474,9 +474,9 @@ fun MainScreen(viewModel: MainViewModel) {
                         Modifier
                             .align(Alignment.TopCenter)
                             .padding(top = 8.dp)
-                            .clickable { viewModel.dismissHint() }
                             .clip(RoundedCornerShape(12.dp))
                             .background(MaterialTheme.colorScheme.secondaryContainer)
+                            .clickable { viewModel.dismissHint() }
                             .padding(horizontal = 20.dp, vertical = 10.dp),
                 ) {
                     Text(

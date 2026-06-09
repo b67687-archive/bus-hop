@@ -78,11 +78,15 @@ class BusRepositoryImpl(
     override suspend fun getBusArrivals(busStopCode: String): NetworkResult<List<BusService>> {
         val result =
             retrySuspend {
-                runCatching<List<BusService>> {
+                try {
                     val response = dataSource.getBusArrivals(busStopCode)
                     val services = response.services ?: emptyList()
                     storage.saveBusServices(busStopCode, services)
-                    services
+                    Result.success(services)
+                } catch (e: kotlinx.coroutines.CancellationException) {
+                    throw e
+                } catch (e: Exception) {
+                    Result.failure(e)
                 }
             }
         return result.toNetworkResult("Fetch arrivals")

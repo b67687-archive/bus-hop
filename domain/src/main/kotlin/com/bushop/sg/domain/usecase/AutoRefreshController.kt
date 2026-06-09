@@ -3,6 +3,7 @@ package com.bushop.sg.domain.usecase
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
+import kotlinx.coroutines.ensureActive
 import kotlinx.coroutines.launch
 
 /** Manages the auto-refresh timer lifecycle. */
@@ -21,6 +22,7 @@ class AutoRefreshController(
             scope.launch {
                 while (true) {
                     delay(intervalSeconds * 1000L)
+                    ensureActive()
                     onRefresh()
                 }
             }
