@@ -33,6 +33,10 @@ data class BusStopEntry(
 class BusStopIndex(
     private val context: Context,
 ) {
+    companion object {
+        private const val MAX_RESULTS = 20
+    }
+
     private val gson = Gson()
     private val abbreviationMap =
         mapOf(
@@ -393,7 +397,7 @@ class BusStopIndex(
         }
 
         results.sortByDescending { it.second }
-        return results.take(20).map { it.first }
+        return results.take(MAX_RESULTS).map { it.first }
     }
 
     fun findByCode(code: String): BusStopEntry? = stops[code]
@@ -432,7 +436,7 @@ class BusStopIndex(
                     }
                 }
             }.sortedBy { it.dist }
-            .take(20)
+            .take(MAX_RESULTS)
             .map { it.entry }
     }
 }

@@ -77,8 +77,8 @@ fun AddBusStopDialog(
         },
         text = {
             Column {
-                if (confirmNearby != null) {
-                    val s = confirmNearby!!
+                val s = confirmNearby
+                if (s != null) {
                     Text("Add this stop?", style = MaterialTheme.typography.bodyLarge)
                     Spacer(Modifier.height(8.dp))
                     Text("${s.code} — ${s.name}", fontWeight = FontWeight.Bold)
@@ -151,10 +151,11 @@ fun AddBusStopDialog(
                 }
 
                 // Results list
-                if (selectedEntry != null) {
+                val entry = selectedEntry
+                if (entry != null) {
                     Spacer(modifier = Modifier.height(8.dp))
                     Text(
-                        "Code: ${selectedEntry!!.code}\n${selectedEntry!!.displayName}",
+                        "Code: ${entry.code}\n${entry.displayName}",
                         style = MaterialTheme.typography.bodySmall,
                         color = MaterialTheme.colorScheme.onSurfaceVariant,
                     )
@@ -209,9 +210,10 @@ fun AddBusStopDialog(
             }
         },
         confirmButton = {
-            if (confirmNearby != null) {
+            val nearbyEntry = confirmNearby
+            if (nearbyEntry != null) {
                 TextButton(onClick = {
-                    onConfirm(confirmNearby!!.code, confirmNearby!!.name)
+                    onConfirm(nearbyEntry.code, nearbyEntry.name)
                     confirmNearby = null
                 }) { Text("Yes, add stop") }
             } else {
