@@ -61,6 +61,7 @@ class MainViewModelTest {
                 every { collapsedStopsFlow } returns collapsedStopsSetFlow
                 every { pinnedServicesFlow } returns pinnedServicesStateFlow
                 every { colorSchemeOptionFlow } returns colorSchemeFlow
+                every { sortByEarliestFlow } returns MutableStateFlow(false)
                 coEvery { getAutoRefreshIntervalOnce() } returns 0
                 coEvery { addBusStop(any()) } returns Result.success(Unit)
                 coEvery { removeBusStop(any()) } returns Unit
@@ -194,6 +195,88 @@ class MainViewModelTest {
             advanceUntilIdle()
 
             coVerify { repository.removeBusStop("12345") }
+        }
+
+    @Test
+    fun `moveStop reorders stops by delta`() =
+        runTest(testDispatcher) {
+            savedStopsFlow.value = listOf(BusStop("11111"), BusStop("22222"), BusStop("33333"))
+            advanceUntilIdle()
+
+            viewModel.moveStop("11111", 2)
+            advanceUntilIdle()
+
+            assertEquals(
+                "22222",
+                viewModel.savedStops.value[0]
+                    .busStop.code,
+            )
+            assertEquals(
+                "33333",
+                viewModel.savedStops.value[1]
+                    .busStop.code,
+            )
+            assertEquals(
+                "11111",
+                viewModel.savedStops.value[2]
+                    .busStop.code,
+            )
+            coVerify { repository.reorderStops(any()) }
+        }
+
+    @Test
+    fun `moveStop with zero delta does nothing`() =
+        runTest(testDispatcher) {
+            savedStopsFlow.value = listOf(BusStop("11111"), BusStop("22222"))
+            advanceUntilIdle()
+
+            viewModel.moveStop("11111", 0)
+            advanceUntilIdle()
+
+            assertEquals(
+                "11111",
+                viewModel.savedStops.value[0]
+                    .busStop.code,
+            )
+            coVerify(inverse = true) { repository.reorderStops(any()) }
+        }
+
+    @Test
+    fun `manual refresh shows loading state`() =
+        runTest(testDispatcher) {
+            savedStopsFlow.value = listOf(BusStop("12345"))
+            advanceUntilIdle()
+
+            val services = listOf(BusService("167", "SBST", null, null, null))
+            coEvery { repository.getBusArrivals("12345") } returns NetworkResult.Success(services)
+
+            viewModel.refreshArrivals("12345", isAutoRefresh = false)
+            advanceUntilIdle()
+
+            coVerify { repository.getBusArrivals("12345") }
+            assertFalse(
+                viewModel.savedStops.value
+                    .first()
+                    .isLoading,
+            )
+        }
+
+    @Test
+    fun `refreshArrivals manually loading has no services`() =
+        runTest(testDispatcher) {
+            savedStopsFlow.value = listOf(BusStop("12345"))
+            advanceUntilIdle()
+
+            coEvery { repository.getBusArrivals("12345") } returns NetworkResult.Error("fail")
+
+            viewModel.refreshArrivals("12345", isAutoRefresh = false)
+            advanceUntilIdle()
+
+            assertFalse(
+                viewModel.savedStops.value
+                    .first()
+                    .isLoading,
+            )
         }
 
     // ── Pin / Sort ──
