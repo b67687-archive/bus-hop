@@ -34,6 +34,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import com.bushop.sg.data.local.BusStopEntry
 import kotlinx.coroutines.delay
+import kotlin.random.Random
 
 @Composable
 fun AddBusStopDialog(
@@ -107,7 +108,25 @@ fun AddBusStopDialog(
                         selectedEntry = null
                     },
                     label = { Text("Bus stop code or name") },
-                    placeholder = { Text("e.g. 83139 or Thomson") },
+                    placeholder = {
+                        val hints =
+                            remember {
+                                listOf(
+                                    "83139 (Jurong East Int)",
+                                    "99012 (Blk 789)",
+                                    "22345 (Bt Batok Int)",
+                                    "44444 (Boon Lay Int)",
+                                    "55678 (Tampines Int)",
+                                    "33333 (Choa Chu Kang Int)",
+                                    "11111 (Orchard Stn)",
+                                    "66666 (Sengkang Int)",
+                                    "22222 (HarbourFront Int)",
+                                    "55555 (Punggol Temp Int)",
+                                )
+                            }
+                        val randomHint = remember { hints[Random.nextInt(hints.size)] }
+                        Text("e.g. $randomHint")
+                    },
                     modifier = Modifier.fillMaxWidth(),
                     singleLine = true,
                     isError = displayError != null,
