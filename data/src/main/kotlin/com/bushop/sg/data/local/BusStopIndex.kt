@@ -74,12 +74,15 @@ class BusStopIndex(
         val codeLower: String,
     )
 
+    @Volatile
     private var indexedStops: List<IndexedStop> = emptyList()
 
     /** Inverted index: name token → list of stop indices containing that token in name. */
+    @Volatile
     private var nameTokenIndex: Map<String, List<Int>> = emptyMap()
 
     /** Inverted index: road token → stop indices containing that token in road. */
+    @Volatile
     private var roadTokenIndex: Map<String, List<Int>> = emptyMap()
 
     private val _isReady = MutableStateFlow(false)
