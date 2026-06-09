@@ -34,7 +34,6 @@ import kotlinx.coroutines.flow.asSharedFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.launch
-import kotlinx.coroutines.withContext
 import java.io.File
 import java.io.IOException
 
@@ -424,14 +423,12 @@ class MainViewModel(
     }
 
     private suspend fun getBusArrivalsSafely(code: String): NetworkResult<List<com.bushop.sg.domain.model.BusService>> =
-        withContext(Dispatchers.IO) {
-            try {
-                repository.getBusArrivals(code)
-            } catch (e: CancellationException) {
-                throw e
-            } catch (e: Exception) {
-                NetworkResult.Error(e.message ?: "Unexpected error", e)
-            }
+        try {
+            repository.getBusArrivals(code)
+        } catch (e: CancellationException) {
+            throw e
+        } catch (e: Exception) {
+            NetworkResult.Error(e.message ?: "Unexpected error", e)
         }
 
     fun removeBusStop(code: String) {
