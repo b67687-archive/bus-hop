@@ -31,15 +31,17 @@
 -keepclassmembers enum * { *; }
 
 # ── Gson reflection (TypeToken, data classes with fields) ──
--keepattributes Signature, *Annotation*, EnclosingMethod
+-keepattributes Signature, *Annotation*, EnclosingMethod, InnerClasses
 -keep class com.google.gson.reflect.TypeToken { *; }
--keep class com.bushop.sg.data.api.GsonProvider { *; }
--keepclassmembers class * {
+-# Keep anonymous TypeToken subclasses with their full generic signature
+-keep class * extends com.google.gson.reflect.TypeToken { *; }
+-# Prevent R8 from stripping generic type info from TypeToken anonymous classes
+-keepclassmembers,allowobfuscation class * {
     @com.google.gson.annotations.SerializedName <fields>;
 }
-
-# ── Kotlin companion objects with TypeToken ──
--keepclassmembers class **.Companion { *; }
+# Keep the companion object TypeToken instances
+-keep class com.bushop.sg.data.local.BusStopStorage { *; }
+-keep class com.bushop.sg.data.api.GsonProvider { *; }
 
 # ── OkHttp / Retrofit internals ──
 -dontwarn okhttp3.internal.platform.**
