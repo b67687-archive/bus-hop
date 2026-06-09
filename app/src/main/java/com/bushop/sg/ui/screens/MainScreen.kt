@@ -88,7 +88,6 @@ import com.bushop.sg.domain.model.ThemeMode
 import com.bushop.sg.ui.components.AddBusStopDialog
 import com.bushop.sg.ui.components.BusStopCard
 import kotlinx.coroutines.delay
-import java.util.concurrent.atomic.AtomicReference
 
 private val timeFormatter =
     java.time.format.DateTimeFormatter
