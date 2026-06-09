@@ -195,7 +195,7 @@ fun MainScreen(viewModel: MainViewModel) {
     var draggedCode by remember { mutableStateOf<String?>(null) }
     var isDragOverDeleteZone by remember { mutableStateOf(false) }
     var deleteZoneTopPx by remember { mutableStateOf(Float.POSITIVE_INFINITY) }
-    var currentDragDelta by remember { mutableStateOf(0) }
+
     val density = LocalDensity.current
     val dragItemHeightPx = with(density) { 140.dp.toPx() }
 
@@ -409,12 +409,9 @@ fun MainScreen(viewModel: MainViewModel) {
                                         onDragStart = { code ->
                                             draggedCode = code
                                             isDragOverDeleteZone = false
-                                            currentDragDelta = 0
                                         },
                                         onDragProgress = { code, lastTotalY, draggedCenterY ->
                                             if (draggedCode == code) {
-                                                // Track reorder position for visual feedback
-                                                currentDragDelta = (lastTotalY / dragItemHeightPx).toInt()
                                                 // Delete zone detection (uses same card-center-in-zone check as deletion)
                                                 if (deleteZoneTopPx.isFinite()) {
                                                     isDragOverDeleteZone = draggedCenterY >= deleteZoneTopPx
@@ -430,9 +427,7 @@ fun MainScreen(viewModel: MainViewModel) {
                                             }
                                             draggedCode = null
                                             isDragOverDeleteZone = false
-                                            currentDragDelta = 0
                                         },
-                                        dragDelta = currentDragDelta,
                                         isDeleteTargeted = draggedCode == stopWithArrivals.busStop.code && isDragOverDeleteZone,
                                     )
                                 }

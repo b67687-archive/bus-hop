@@ -94,7 +94,6 @@ fun BusStopCard(
     onDragStart: ((code: String) -> Unit)? = null, // called when drag begins
     onDragProgress: ((code: String, lastTotalY: Float, draggedCenterY: Float) -> Unit)? = null,
     onDragEnd: ((code: String, lastTotalY: Float) -> Unit)? = null, // called when drag ends
-    dragDelta: Int = 0,
     isDeleteTargeted: Boolean = false,
     modifier: Modifier = Modifier,
 ) {
@@ -314,29 +313,6 @@ fun BusStopCard(
                             modifier = Modifier.size(12.dp),
                             tint = if (isPinned) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant,
                         )
-                    }
-                    // Drag position badge (visual feedback for reorder without live shifting)
-                    if (isLocallyDragged && dragDelta != 0) {
-                        val badgeText =
-                            when {
-                                dragDelta > 0 -> "+$dragDelta"
-                                else -> "$dragDelta"
-                            }
-                        Box(
-                            modifier =
-                                Modifier
-                                    .clip(RoundedCornerShape(6.dp))
-                                    .background(MaterialTheme.colorScheme.primary.copy(alpha = 0.15f))
-                                    .padding(horizontal = 6.dp, vertical = 2.dp),
-                        ) {
-                            Text(
-                                text = badgeText,
-                                style = MaterialTheme.typography.labelSmall,
-                                fontWeight = FontWeight.Bold,
-                                color = MaterialTheme.colorScheme.primary,
-                            )
-                        }
-                        Spacer(modifier = Modifier.width(4.dp))
                     }
                     Box(
                         modifier =
