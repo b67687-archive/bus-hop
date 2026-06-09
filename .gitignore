@@ -31,6 +31,9 @@ local.properties
 
 # Local development scripts (not used in CI)
 /scripts/
+
+# Release signing keystore (contains credentials)
+app/keystore.jks
 .settings/
 
 # Android Studio

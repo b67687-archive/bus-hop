@@ -43,7 +43,7 @@
 
 ## Download
 
-> **Latest release:** [v1.0.0](https://github.com/B67687/BusHop-SG/releases/latest) — `bus-hop.apk` (18 MB)
+> **Latest release:** [v1.0.0](https://github.com/B67687/BusHop-SG/releases/latest) — `bus-hop.apk` (**1.9 MB**, R8-minified release build)
 
 Or [build from source](#build-from-source).
 
