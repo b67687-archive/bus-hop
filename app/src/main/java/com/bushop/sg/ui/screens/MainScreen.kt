@@ -88,6 +88,7 @@ import com.bushop.sg.domain.model.ThemeMode
 import com.bushop.sg.ui.components.AddBusStopDialog
 import com.bushop.sg.ui.components.BusStopCard
 import kotlinx.coroutines.delay
+import java.util.concurrent.atomic.AtomicReference
 
 private val timeFormatter =
     java.time.format.DateTimeFormatter
@@ -195,7 +196,11 @@ fun MainScreen(viewModel: MainViewModel) {
     var draggedCode by remember { mutableStateOf<String?>(null) }
     var isDragOverDeleteZone by remember { mutableStateOf(false) }
     var deleteZoneTopPx by remember { mutableStateOf(Float.POSITIVE_INFINITY) }
-    var dragOffsetAnchor by remember { mutableStateOf(0f) } // consumed by live reorder
+    val dragOffsetAnchorRef =
+        remember {
+            java.util.concurrent.atomic
+                .AtomicReference(0f)
+        }
     var dragLastDelta by remember { mutableStateOf(0) } // last processed delta
     val density = LocalDensity.current
     val dragItemHeightPx = with(density) { 140.dp.toPx() }
@@ -420,7 +425,7 @@ fun MainScreen(viewModel: MainViewModel) {
                                                     if (adjustment != 0) {
                                                         viewModel.moveStop(code, adjustment)
                                                     }
-                                                    dragOffsetAnchor += adjustment * dragItemHeightPx
+                                                    dragOffsetAnchorRef.set(dragOffsetAnchorRef.get() + adjustment * dragItemHeightPx)
                                                     dragLastDelta = delta
                                                 }
                                                 // Delete zone detection
@@ -442,10 +447,10 @@ fun MainScreen(viewModel: MainViewModel) {
                                             // Note: reorder already handled during drag — no moveStop needed
                                             draggedCode = null
                                             isDragOverDeleteZone = false
-                                            dragOffsetAnchor = 0f
+                                            dragOffsetAnchorRef.set(0f)
                                             dragLastDelta = 0
                                         },
-                                        dragOffsetAnchor = dragOffsetAnchor,
+                                        dragOffsetAnchorRef = dragOffsetAnchorRef,
                                         isDeleteTargeted = draggedCode == stopWithArrivals.busStop.code && isDragOverDeleteZone,
                                     )
                                 }

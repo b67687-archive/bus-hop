@@ -79,6 +79,7 @@ import androidx.compose.ui.zIndex
 import com.bushop.sg.domain.model.BusService
 import com.bushop.sg.domain.model.BusStopWithArrivals
 import com.bushop.sg.domain.model.toDisplayArrival
+import java.util.concurrent.atomic.AtomicReference
 
 @OptIn(ExperimentalLayoutApi::class, ExperimentalFoundationApi::class)
 @Composable
@@ -94,7 +95,7 @@ fun BusStopCard(
     onDragStart: ((code: String) -> Unit)? = null, // called when drag begins
     onDragProgress: ((code: String, lastTotalY: Float, draggedCenterY: Float) -> Unit)? = null,
     onDragEnd: ((code: String, lastTotalY: Float) -> Unit)? = null, // called when drag ends
-    dragOffsetAnchor: Float = 0f, // offset consumed by live reorder positioning
+    dragOffsetAnchorRef: java.util.concurrent.atomic.AtomicReference<Float>? = null,
     isDeleteTargeted: Boolean = false,
     modifier: Modifier = Modifier,
 ) {
@@ -112,7 +113,8 @@ fun BusStopCard(
     var collapsedForDrag by remember { mutableStateOf(false) }
     var cardCenterYInRoot by remember { mutableStateOf(0f) }
     val visuallyDragged = isLocallyDragged
-    val effectiveOffset = localDragOffset - dragOffsetAnchor
+    val currentAnchor = dragOffsetAnchorRef?.get() ?: 0f
+    val effectiveOffset = localDragOffset - currentAnchor
     val effectiveCollapsed = collapsedForDrag || isCollapsed
     val dragScale by animateFloatAsState(
         targetValue = if (isDeleteTargeted) 0.86f else 1f,
