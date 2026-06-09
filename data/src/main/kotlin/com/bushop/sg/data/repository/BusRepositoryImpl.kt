@@ -31,6 +31,12 @@ class BusRepositoryImpl(
 
     override val collapsedStopsFlow: Flow<Set<String>> = storage.collapsedStopsFlow
 
+    override val sortByEarliestFlow: Flow<Boolean> = storage.sortByEarliestFlow
+
+    override suspend fun setSortByEarliest(enabled: Boolean) {
+        storage.saveSortByEarliest(enabled)
+    }
+
     override val pinnedServicesFlow: Flow<Set<String>> = storage.pinnedServices
 
     override val isIndexReady: StateFlow<Boolean> = busStopIndex.isReady

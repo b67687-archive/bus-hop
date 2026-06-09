@@ -225,6 +225,19 @@ class BusStopStorage(
         }
     }
 
+    // ── Sort by earliest ──
+
+    val sortByEarliestFlow: Flow<Boolean> =
+        context.dataStore.data
+            .map { prefs -> prefs[stringPreferencesKey("sort_by_earliest")]?.toBooleanStrictOrNull() ?: false }
+            .distinctUntilChanged()
+
+    suspend fun saveSortByEarliest(enabled: Boolean) {
+        context.dataStore.edit { prefs ->
+            prefs[stringPreferencesKey("sort_by_earliest")] = enabled.toString()
+        }
+    }
+
     // ── Collapsed stops (type-safe Set) ──
 
     val collapsedStopsFlow: Flow<Set<String>> =

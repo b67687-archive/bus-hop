@@ -76,7 +76,7 @@ class MainViewModel(
     private val _sortByEarliest = MutableStateFlow(false)
     val sortByEarliest: StateFlow<Boolean> = _sortByEarliest.asStateFlow()
 
-    private val _snackbarMessage = MutableSharedFlow<String>(extraBufferCapacity = 1)
+    private val _snackbarMessage = MutableSharedFlow<String>(extraBufferCapacity = 10)
     val snackbarMessage: SharedFlow<String> = _snackbarMessage.asSharedFlow()
 
     var addStopIsLoading by mutableStateOf(false)
@@ -284,6 +284,11 @@ class MainViewModel(
         viewModelScope.launch {
             repository.pinnedServicesFlow.collect { pinned ->
                 _pinnedServices.value = pinned
+            }
+        }
+        viewModelScope.launch {
+            repository.sortByEarliestFlow.collect { enabled ->
+                _sortByEarliest.value = enabled
             }
         }
 
@@ -598,7 +603,11 @@ class MainViewModel(
     }
 
     fun toggleSortOrder() {
-        _sortByEarliest.value = !_sortByEarliest.value
+        val newValue = !_sortByEarliest.value
+        _sortByEarliest.value = newValue
+        viewModelScope.launch {
+            repository.setSortByEarliest(newValue)
+        }
     }
 
     fun toggleCollapse(code: String) {

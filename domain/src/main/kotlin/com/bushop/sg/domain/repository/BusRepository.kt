@@ -29,6 +29,10 @@ interface BusRepository {
 
     suspend fun setCollapsedStops(stops: Set<String>)
 
+    val sortByEarliestFlow: Flow<Boolean>
+
+    suspend fun setSortByEarliest(enabled: Boolean)
+
     val pinnedServicesFlow: Flow<Set<String>>
 
     suspend fun savePinnedServices(pinned: Set<String>)
