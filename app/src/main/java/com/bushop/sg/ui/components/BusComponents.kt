@@ -346,11 +346,12 @@ fun BusStopCard(
                 }
             }
 
-            // Expanded services: animated expand/collapse normally, invisible but in-layout during drag
-            // to prevent LazyColumn re-layout (which causes drag bounce).
-            val expandedServicesAlpha = if (isLocallyDragged) 0f else 1f
+            // Expanded services: animated expand/collapse normally, hidden during drag
+            // (removed from layout to keep card collapsed). animateItem(tween(0)) on the
+            // LazyColumn item prevents position bounce from layout change.
+            val showExpanded = !effectiveCollapsed && !isLocallyDragged
             AnimatedVisibility(
-                visible = !effectiveCollapsed || isLocallyDragged,
+                visible = showExpanded,
                 enter =
                     fadeIn(animationSpec = tween(durationMillis = 280, easing = easing)) +
                         expandVertically(animationSpec = tween(durationMillis = 280, easing = easing)),
@@ -358,12 +359,7 @@ fun BusStopCard(
                     fadeOut(animationSpec = tween(durationMillis = 150, easing = easing)) +
                         shrinkVertically(animationSpec = tween(durationMillis = 150, easing = easing)),
             ) {
-                Column(
-                    modifier =
-                        Modifier
-                            .padding(horizontal = 16.dp)
-                            .graphicsLayer { alpha = expandedServicesAlpha },
-                ) {
+                Column(modifier = Modifier.padding(horizontal = 16.dp)) {
                     Spacer(modifier = Modifier.height(8.dp))
 
                     when {
