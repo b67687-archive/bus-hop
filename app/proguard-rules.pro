@@ -49,6 +49,27 @@
 -dontwarn org.bouncycastle.**
 -dontwarn org.openjsse.**
 
+# ── Retrofit method annotations (dynamic proxy) ──
+-keep,allowobfuscation,allowshrinking interface retrofit2.Call
+-keep,allowobfuscation,allowshrinking class retrofit2.Response
+-keepclassmembers,allowshrinking,allowobfuscation interface * {
+    @retrofit2.http.* <methods>;
+}
+
+# ── OkHttp services (ServiceLoader for Conscrypt/BouncyCastle) ──
+-keepnames class okhttp3.internal.publicsuffix.PublicSuffixDatabase
+-dontnote okhttp3.internal.platform.**
+
 # ── Coroutine internals (required for R8 full mode) ──
 -keepnames class kotlinx.coroutines.internal.MainDispatcherFactory {}
 -keepnames class kotlinx.coroutines.CoroutineExceptionHandler {}
+-keepclassmembers class kotlinx.coroutines.** {
+    volatile <fields>;
+}
+
+# ── Kotlin stdlib keep (required for some inline functions in R8 full mode) ──
+-keepclassmembers class kotlin.Metadata { *; }
+-dontwarn kotlin.**
+
+# ── DataStore / Preferences (used via reflection in some configurations) ──
+-keep class * extends androidx.datastore.preferences.core.Preferences { *; }
