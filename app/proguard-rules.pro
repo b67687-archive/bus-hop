@@ -30,18 +30,27 @@
 # ── Enum classes (ApiStatus, ThemeMode, ColorSchemeOption) ──
 -keepclassmembers enum * { *; }
 
-# ── Gson reflection (TypeToken, data classes with fields) ──
+# ── Gson (complete) ──
+# Preserve all generic type signatures (critical for Gson's TypeToken reflection)
 -keepattributes Signature, *Annotation*, EnclosingMethod, InnerClasses
+# Keep ALL Gson classes — R8 must not strip, obfuscate, or optimize any of them
+-keep class com.google.gson.** { *; }
+-keepclassmembers class com.google.gson.** { *; }
+-keep enum com.google.gson.** { *; }
+# Specifically TypeToken and all subclasses (anonymous or otherwise)
 -keep class com.google.gson.reflect.TypeToken { *; }
-# Keep anonymous TypeToken subclasses with their full generic signature
 -keep class * extends com.google.gson.reflect.TypeToken { *; }
-# Prevent R8 from stripping generic type info from TypeToken anonymous classes
+# Keep @SerializedName on all fields (used by Gson reflection)
 -keepclassmembers,allowobfuscation class * {
     @com.google.gson.annotations.SerializedName <fields>;
 }
-# Keep the companion object TypeToken instances
+# Keep our Gson provider and storage classes
 -keep class com.bushop.sg.data.local.BusStopStorage { *; }
 -keep class com.bushop.sg.data.api.GsonProvider { *; }
+# Prevent R8 from stripping generic type info from any method that uses Gson types
+-keepclassmembers class * {
+    @com.google.gson.annotations.Expose <fields>;
+}
 
 # ── OkHttp / Retrofit internals ──
 -dontwarn okhttp3.internal.platform.**
