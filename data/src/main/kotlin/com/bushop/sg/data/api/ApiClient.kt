@@ -21,7 +21,7 @@ object ApiClient {
         loggingInterceptor.level = HttpLoggingInterceptor.Level.BODY
     }
 
-    private val okHttpClient =
+    val okHttpClient =
         OkHttpClient
             .Builder()
             .addInterceptor(loggingInterceptor)

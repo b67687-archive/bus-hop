@@ -11,6 +11,9 @@ data class BusStopWithArrivals(
     val isCollapsed: Boolean = false,
     val isPinned: Boolean = false,
 ) {
+    /** Non-reactive: reads wall clock on every access.
+     *  True when cached data is older than [STALE_THRESHOLD_MS].
+     *  Does NOT auto-update — caller must re-read or trigger refresh. */
     val isStale: Boolean get() =
         cachedAt > 0 && (System.currentTimeMillis() - cachedAt) > STALE_THRESHOLD_MS
 

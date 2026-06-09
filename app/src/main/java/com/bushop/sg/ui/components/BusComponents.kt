@@ -78,6 +78,8 @@ import com.bushop.sg.domain.model.BusService
 import com.bushop.sg.domain.model.BusStopWithArrivals
 import com.bushop.sg.domain.model.toDisplayArrival
 
+private const val COLLAPSE_PROPAGATION_MS = 50L
+
 @OptIn(ExperimentalLayoutApi::class, ExperimentalFoundationApi::class)
 @Composable
 fun BusStopCard(
@@ -255,10 +257,14 @@ fun BusStopCard(
                                     .background(namePillBg)
                                     .padding(horizontal = 12.dp, vertical = 8.dp),
                         ) {
+                            val nameStyle =
+                                remember(busStopName, dynamicFontSize) {
+                                    nameTextStyle.copy(fontSize = dynamicFontSize)
+                                }
                             Text(
                                 text = busStopName,
                                 fontSize = dynamicFontSize,
-                                style = nameTextStyle.copy(fontSize = dynamicFontSize),
+                                style = nameStyle,
                                 fontWeight = FontWeight.Bold,
                                 color =
                                     if (isPinned) {
@@ -420,7 +426,7 @@ fun BusStopCard(
             if (isCollapsed) {
                 collapsedForDrag = false
             } else {
-                kotlinx.coroutines.delay(50)
+                kotlinx.coroutines.delay(COLLAPSE_PROPAGATION_MS)
                 collapsedForDrag = false
             }
         }

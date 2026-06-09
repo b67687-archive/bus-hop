@@ -1,7 +1,8 @@
 package com.bushop.sg.data.local
 
 import android.content.Context
-import com.google.gson.Gson
+import android.util.Log
+import com.bushop.sg.data.api.GsonProvider
 import com.google.gson.reflect.TypeToken
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -89,7 +90,7 @@ class BusStopIndex(
         private const val MAX_RESULTS = 20
     }
 
-    private val gson = Gson()
+    private val gson = GsonProvider.gson
     private val abbreviationMap =
         mapOf(
             "bt" to "bukit",
@@ -209,6 +210,7 @@ class BusStopIndex(
                         .bufferedReader()
                         .use { it.readText() }
                 } catch (e: Exception) {
+                    Log.w("BusStopIndex", "Failed to load bus_stops.json", e)
                     "{}"
                 }
             val type = object : TypeToken<Map<String, List<Any>>>() {}.type
@@ -216,6 +218,7 @@ class BusStopIndex(
                 try {
                     gson.fromJson(json, type) ?: emptyMap()
                 } catch (e: Exception) {
+                    Log.w("BusStopIndex", "Failed to parse bus_stops.json", e)
                     emptyMap()
                 }
             val parsed =
