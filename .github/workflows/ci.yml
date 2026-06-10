@@ -26,8 +26,8 @@ jobs:
               uses: actions/cache@v4
               with:
                   path: ~/.gradle/caches/
-                  key: lint-${{ runner.os }}-${{ hashFiles('**/*.gradle*', '**/gradle-wrapper.properties', '**/libs.versions.toml') }}
-                  restore-keys: lint-${{ runner.os }}-
+                  key: gradle-${{ runner.os }}-${{ hashFiles('**/*.gradle*', '**/*.kts', '**/*.toml', '**/gradle-wrapper.properties') }}
+                  restore-keys: gradle-${{ runner.os }}-
             - name: Grant execute permission for gradlew
               run: chmod +x gradlew
             - name: Verify version matches tag
@@ -58,8 +58,8 @@ jobs:
               uses: actions/cache@v4
               with:
                   path: ~/.gradle/caches/
-                  key: test-${{ runner.os }}-${{ hashFiles('**/*.gradle*', '**/gradle-wrapper.properties', '**/libs.versions.toml') }}
-                  restore-keys: test-${{ runner.os }}-
+                  key: gradle-${{ runner.os }}-${{ hashFiles('**/*.gradle*', '**/*.kts', '**/*.toml', '**/gradle-wrapper.properties') }}
+                  restore-keys: gradle-${{ runner.os }}-
             - name: Grant execute permission for gradlew
               run: chmod +x gradlew
             - name: Run tests & build debug APK
