@@ -17,10 +17,10 @@
 
 ## Screenshots
 
-| Stops list                                          | Search dialog                                            |
-| --------------------------------------------------- | -------------------------------------------------------- |
-| _Pinned stops at top, arrivals, pull-to-refresh_    | _TokenTrie O(k) search — instant, no network_            |
-| ![Stops list](docs/screenshots/screenshot_main.jpg) | ![Search dialog](docs/screenshots/screenshot_search.png) |
+| Stops list | Search dialog |
+| ---------- | ------------- |
+| _Pinned stops at top, arrivals, pull-to-refresh_ | _TokenTrie O(k) search — instant, no network_ |
+| <img src="docs/screenshots/screenshot_main.jpg" height="500"> | <img src="docs/screenshots/screenshot_search.png" height="500"> |
 
 ## Features
 
