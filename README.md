@@ -17,10 +17,10 @@
 
 ## Screenshots
 
-| Stops list                                          | Expanded stop                                              | Search dialog                                            |
-| --------------------------------------------------- | ---------------------------------------------------------- | -------------------------------------------------------- |
-| _Pinned stops at top, arrivals, pull-to-refresh_    | _All services with operator badges and timings_            | _TokenTrie O(k) search — instant, no network_            |
-| ![Stops list](docs/screenshots/screenshot_main.png) | ![Expanded stop](docs/screenshots/screenshot_expanded.png) | ![Search dialog](docs/screenshots/screenshot_search.png) |
+| Stops list                                          | Search dialog                                            |
+| --------------------------------------------------- | -------------------------------------------------------- |
+| _Pinned stops at top, arrivals, pull-to-refresh_    | _TokenTrie O(k) search — instant, no network_            |
+| ![Stops list](docs/screenshots/screenshot_main.jpg) | ![Search dialog](docs/screenshots/screenshot_search.jpg) |
 
 ## Features
 
