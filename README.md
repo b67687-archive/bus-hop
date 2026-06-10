@@ -20,7 +20,7 @@
 | Stops list                                          | Search dialog                                            |
 | --------------------------------------------------- | -------------------------------------------------------- |
 | _Pinned stops at top, arrivals, pull-to-refresh_    | _TokenTrie O(k) search — instant, no network_            |
-| ![Stops list](docs/screenshots/screenshot_main.jpg) | ![Search dialog](docs/screenshots/screenshot_search.jpg) |
+| ![Stops list](docs/screenshots/screenshot_main.jpg) | ![Search dialog](docs/screenshots/screenshot_search.png) |
 
 ## Features
 
