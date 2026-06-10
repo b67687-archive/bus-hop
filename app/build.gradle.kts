@@ -6,12 +6,12 @@ plugins {
 
 android {
     namespace = "com.bushop"
-    compileSdk = 34
+    compileSdk = 35
 
     defaultConfig {
         applicationId = "com.bushop"
         minSdk = 24
-        targetSdk = 34
+        targetSdk = 35
         versionCode = 44
         versionName = "1.0.0"
 
