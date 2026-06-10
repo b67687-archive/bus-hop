@@ -2,14 +2,14 @@
   <img src="icon.svg" alt="BusHop" width="96" height="96">
   <h1>BusHop</h1>
   <p><strong>Lightweight Singapore bus timing app</strong></p>
-  <p>Material 3 Compose UI with real-time arrivals, drag-to-reorder, pinning, and smart search.</p>
+  <p>Material 3 Compose UI with real-time arrivals, drag-to-reorder, pinning, and smart search. No ads, no accounts, no tracking.</p>
   <p>
     <img src="https://img.shields.io/badge/Kotlin-2.0+-7F52FF?logo=kotlin&logoColor=white">
     <img src="https://img.shields.io/badge/Compose-BOM%202024-4285F4?logo=jetpackcompose&logoColor=white">
     <img src="https://img.shields.io/badge/minSdk-24-34A853">
     <img src="https://img.shields.io/badge/targetSdk-34-34A853">
     <img src="https://img.shields.io/badge/license-MIT-yellow">
-    <img src="https://img.shields.io/badge/tests-146%20passing-34A853">
+    <img src="https://img.shields.io/badge/tests-154%20passing-34A853">
   </p>
 </div>
 
@@ -37,7 +37,7 @@
 | 🌙  | **Theme support**        | Light, Dark, System-following, with Blue and Contrast Blue colour schemes — all persisted |
 | 🔄  | **Auto-refresh**         | Configurable interval (30s / 1m / 2m / 5m / Off) — pauses in background                   |
 | ↘️  | **Pull to refresh**      | Swipe down to refresh all stops                                                           |
-| 🖱️  | **Drag to reorder**      | Long-press and drag bus stops to reorder — items shift dynamically during drag            |
+| 🖱️  | **Drag to reorder**      | Long-press and drag bus stops to reorder — commit on drag end                             |
 | 🗑️  | **Drag to delete**       | Drag a stop into the bottom delete zone — card-center-in-zone threshold                   |
 | 🔒  | **Privacy first**        | Location is opt-in only. No accounts, no analytics, no telemetry                          |
 | 📱  | **Material 3**           | Modern Compose UI with animations, pull-to-refresh, edge-to-edge                          |
@@ -50,30 +50,32 @@ Or build from source for a debug APK.
 
 ## Architecture
 
-```
-┌──────────────────────────────────────────────┐
-│              App Module (app/)                │
-│  ┌─────────┐  ┌──────────┐ ┌──────────────┐  │
-│  │  UI     │  │ ViewModel│ │  Components   │  │
-│  │(Compose)│◄─┤ (State)  │◄─┤ (Theme/Dialogs)│ │
-│  └─────────┘  └──────────┘ └──────────────┘  │
-├──────────────────────────────────────────────┤
-│             Data Module (data/)                │
-│  ┌──────────┐ ┌──────────┐ ┌──────────────┐  │
-│  │  API     │ │  Local   │ │ BusRepository │  │
-│  │(Retrofit)│ │(DataStore)│ │   Impl       │  │
-│  │ + Trie   │ │+ Index   │ │              │  │
-│  └──────────┘ └──────────┘ └──────────────┘  │
-├──────────────────────────────────────────────┤
-│            Domain Module (domain/)             │
-│  ┌───────────┐ ┌────────────┐ ┌───────────┐  │
-│  │  Models   │ │  UseCases  │ │ Repository│  │
-│  │ (no deps) │ │            │ │ Interface │  │
-│  └───────────┘ └────────────┘ └───────────┘  │
-└──────────────────────────────────────────────┘
+```mermaid
+graph TD
+    subgraph app["app/ — Android App"]
+        UI["UI (Compose)"] --> VM["ViewModel (State)"]
+        VM --> C["Components<br/>(Theme, Dialogs)"]
+    end
+
+    subgraph data["data/ — Data Layer"]
+        API["API<br/>(Retrofit + Arrivelah)"] --> REPO["BusRepositoryImpl"]
+        LOCAL["Local<br/>(DataStore + Index)"] --> REPO
+        TRIE["TokenTrie<br/>(Search Index)"] --> LOCAL
+    end
+
+    subgraph domain["domain/ — Pure Kotlin"]
+        MODELS["Models<br/>(no deps)"]
+        UC["UseCases"]
+        IFACE["Repository Interface"]
+    end
+
+    VM --> UC
+    UC --> IFACE
+    REPO --> IFACE
+    IFACE --- MODELS
 ```
 
-- **domain/** — Pure Kotlin (zero framework deps). Models, use cases, repository interface.
+- **domain/** — Pure Kotlin (zero framework deps). Models, use cases, repository interfaces.
 - **data/** — Android library. Retrofit API calls, DataStore persistence, BusStopIndex with TokenTrie for search.
 - **app/** — Android app. Jetpack Compose UI, ViewModels, theme, components.
 
@@ -125,7 +127,7 @@ Or build from source for a debug APK.
 
 ## Testing
 
-**146 tests** across 7 test files:
+**154 tests** across 8 test files:
 
 | Module                        | Tests | What's covered                                                    |
 | ----------------------------- | ----- | ----------------------------------------------------------------- |
@@ -133,6 +135,7 @@ Or build from source for a debug APK.
 | Domain: Model                 | 10    | toDisplayArrival eta/load/busType mapping                         |
 | Domain: RefreshCoordinator    | 6     | Cooldown, independent cooldowns, concurrent batching              |
 | Domain: AutoRefreshController | 7     | Start/stop/restart/onCleared lifecycle                            |
+| Domain: BusStopUseCase        | 4     | addFavoriteStop, removeFavoriteStop, getSavedStops, refresh       |
 | Data: BusStopIndex            | 45    | Search (exact, prefix, fuzzy, abbreviations, sorting, findNearby) |
 | Data: RetryUtil               | 6     | Retry with backoff, CancellationException propagation             |
 | App: MainViewModel            | 50+   | add/remove/move/pin/collapse/refresh/sort/errors                  |
