@@ -46,7 +46,7 @@
 
 ## Download
 
-> **Latest release:** [v1.0.0](https://github.com/B67687/BusHop/releases/latest) — `bus-hop.apk` (**1.75 MB**, R8-minified, shrinkResources, signed)
+> **Latest release:** [v1.0.0](https://github.com/B67687/BusHop/releases/latest) — `bus-hop.apk` (**1.8 MB**, R8-minified, shrinkResources, signed)
 
 Or [build from source](#build-from-source) for a debug APK.
 
@@ -64,7 +64,7 @@ Or [build from source](#build-from-source) for a debug APK.
 
 1. **Development** — Code written iteratively by AI agent + human review. Source, tests, and config live in `main`.
 2. **CI** — Every push triggers linting, 154+ unit tests, and architecture boundary checks via GitHub Actions.
-3. **Build** — Gradle compiles Kotlin, R8 minifies + optimizes + `shrinkResources` reduces the release APK down to ~1.75 MB (vs 18 MB debug).
+3. **Build** — Gradle compiles Kotlin, R8 minifies + optimizes + `shrinkResources` reduces the release APK down to ~1.8 MB (vs 18 MB debug).
 4. **Release** — APK is signed, published as a GitHub Release, and distributed via Obtainium for automatic updates.
 5. **History** — `git filter-repo` removed agent tooling artifacts from git history post-launch. TokenTrie O(k) search replaced Google Places autocomplete (no network, no API key).
 
