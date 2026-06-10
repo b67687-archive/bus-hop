@@ -50,30 +50,7 @@ Or [build from source](#build-from-source) for a debug APK.
 
 ## Architecture
 
-```mermaid
-graph TD
-    subgraph app["app/ — Android App"]
-        UI["UI (Compose)"] --> VM["ViewModel (State)"]
-        VM --> C["Components<br/>(Theme, Dialogs)"]
-    end
-
-    subgraph data["data/ — Data Layer"]
-        API["API<br/>(Retrofit + Arrivelah)"] --> REPO["BusRepositoryImpl"]
-        LOCAL["Local<br/>(DataStore + Index)"] --> REPO
-        TRIE["TokenTrie<br/>(Search Index)"] --> LOCAL
-    end
-
-    subgraph domain["domain/ — Pure Kotlin"]
-        MODELS["Models<br/>(no deps)"]
-        UC["UseCases"]
-        IFACE["Repository Interface"]
-    end
-
-    VM --> UC
-    UC --> IFACE
-    REPO --> IFACE
-    IFACE --- MODELS
-```
+<img src="architecture.svg" alt="Architecture diagram" width="600">
 
 - **domain/** — Pure Kotlin (zero framework deps). Models, use cases, repository interfaces.
 - **data/** — Android library. Retrofit API calls, DataStore persistence, BusStopIndex with TokenTrie for search.
