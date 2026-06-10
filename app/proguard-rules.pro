@@ -13,7 +13,11 @@
 
 # ── Retrofit interfaces ──
 # All Retrofit API interfaces must be kept for dynamic proxy to work
--keep,allowobfuscation interface com.bushop.sg.data.api.ArrivelahApi
+# Keep ALL methods and their generic signatures (critical for Kotlin suspend functions:
+# Retrofit's HttpServiceMethod does an unchecked (ParameterizedType) cast on
+# getGenericParameterTypes().last() — if R8 strips the Signature attribute,
+# getGenericParameterTypes() returns raw Class instead of ParameterizedType.)
+-keep,allowobfuscation interface com.bushop.sg.data.api.ArrivelahApi { *; }
 
 # ── ViewModel ──
 -keep class * extends androidx.lifecycle.ViewModel { *; }
