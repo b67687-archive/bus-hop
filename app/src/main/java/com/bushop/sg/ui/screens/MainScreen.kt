@@ -388,7 +388,7 @@ fun MainScreen(viewModel: MainViewModel) {
                                                     if (draggedCode == stopWithArrivals.busStop.code) {
                                                         tween(durationMillis = 0)
                                                     } else {
-                                                        tween(durationMillis = 280)
+                                                        tween(durationMillis = 150)
                                                     },
                                             ),
                                         stop = stopWithArrivals,

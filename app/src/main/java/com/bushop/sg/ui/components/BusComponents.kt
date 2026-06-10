@@ -532,7 +532,6 @@ fun BusServiceRow(
         modifier =
             Modifier
                 .fillMaxWidth()
-                .padding(12.dp)
                 .clip(RoundedCornerShape(12.dp))
                 .background(
                     if (isPinned) {
@@ -555,7 +554,7 @@ fun BusServiceRow(
                     } else {
                         Modifier
                     },
-                ),
+                ).padding(12.dp),
         verticalAlignment = Alignment.CenterVertically,
     ) {
         Box(
