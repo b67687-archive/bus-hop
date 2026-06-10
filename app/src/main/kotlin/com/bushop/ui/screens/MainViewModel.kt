@@ -33,6 +33,7 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asSharedFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.combine
+import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
 import java.io.File
 import java.io.IOException
@@ -352,26 +353,14 @@ class MainViewModel(
     fun showAddStopDialog() {
         addStopError = null
         addStopDialogVisible = true
-        // Pick a random stop from the index (if loaded) or fallback from static list
-        if (busStopIndex.isReady.value) {
+        // Pick a random stop from the index once it's loaded
+        viewModelScope.launch {
+            busStopIndex.isReady.first { it }
             val entries = busStopIndex.allEntries()
             if (entries.isNotEmpty()) {
                 randomHint = with(entries.random()) { "$code ($name)" }
-                return
             }
         }
-        randomHint =
-            listOf(
-                "66666 (Sengkang Int)",
-                "11111 (Orchard Stn)",
-                "44444 (Boon Lay Int)",
-                "22345 (Bt Batok Int)",
-                "99012 (Blk 789)",
-                "55678 (Tampines Int)",
-                "33333 (Choa Chu Kang Int)",
-                "22222 (HarbourFront Int)",
-                "55555 (Punggol Temp Int)",
-            ).random()
     }
 
     fun searchBusStops(query: String) {
