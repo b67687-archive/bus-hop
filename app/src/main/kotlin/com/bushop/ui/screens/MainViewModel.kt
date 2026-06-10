@@ -406,11 +406,6 @@ class MainViewModel(
                     is NetworkResult.Success -> {
                         consecutiveFailures.set(0)
                         _apiStatus.value = ApiStatus.Healthy
-                        if (arrivalResult.data.isEmpty()) {
-                            addStopError = "No bus services found at this stop."
-                            addStopIsLoading = false
-                            return@launch
-                        }
                     }
                 }
 
