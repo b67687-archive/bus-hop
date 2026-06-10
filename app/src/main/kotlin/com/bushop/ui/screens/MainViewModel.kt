@@ -368,6 +368,7 @@ class MainViewModel(
     }
 
     fun searchBusStops(query: String) {
+        addStopError = null
         viewModelScope.launch(Dispatchers.Default) {
             val results = busStopIndex.search(query)
             _searchResults.value = results
