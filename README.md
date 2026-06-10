@@ -44,7 +44,7 @@
 
 ## Download
 
-> **Latest release:** [v1.0.0](https://github.com/B67687/BusHop-SG/releases/latest) — `bus-hop.apk` (**2 MB**, R8-minified, signed)
+> **Latest release:** [v1.0.0](https://github.com/B67687/BusHop/releases/latest) — `bus-hop.apk` (**2 MB**, R8-minified, signed)
 
 Or build from source for a debug APK.
 

@@ -4,7 +4,7 @@ plugins {
 }
 
 android {
-    namespace = "com.bushop.sg.data"
+    namespace = "com.bushop.data"
     compileSdk = 34
 
     defaultConfig {

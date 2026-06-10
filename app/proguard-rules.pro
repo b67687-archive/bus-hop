@@ -1,15 +1,15 @@
-# BusHop-SG ProGuard / R8 Rules
+# BusHop ProGuard / R8 Rules
 
 # ── Domain models ──
 # BusService, BusInfo, etc. are serialized/deserialized via Gson in the data layer
--keep class com.bushop.sg.domain.model.** { *; }
+-keep class com.bushop.domain.model.** { *; }
 
 # ── Data layer DTOs ──
 # ArrivelahResponse DTOs use Gson @SerializedName
--keep class com.bushop.sg.data.api.** { *; }
+-keep class com.bushop.data.api.** { *; }
 
 # BusStopEntry and other local model classes used in Gson operations
--keep class com.bushop.sg.data.local.** { *; }
+-keep class com.bushop.data.local.** { *; }
 
 # ── Retrofit interfaces ──
 # All Retrofit API interfaces must be kept for dynamic proxy to work
@@ -17,13 +17,13 @@
 # Retrofit's HttpServiceMethod does an unchecked (ParameterizedType) cast on
 # getGenericParameterTypes().last() — if R8 strips the Signature attribute,
 # getGenericParameterTypes() returns raw Class instead of ParameterizedType.)
--keep interface com.bushop.sg.data.api.ArrivelahApi { *; }
+-keep interface com.bushop.data.api.ArrivelahApi { *; }
 
 # ── ViewModel ──
 -keep class * extends androidx.lifecycle.ViewModel { *; }
 -keep class * extends androidx.lifecycle.AndroidViewModel { *; }
--keep class com.bushop.sg.ui.screens.MainViewModel { *; }
--keep class com.bushop.sg.ui.screens.MainViewModel$Factory { *; }
+-keep class com.bushop.ui.screens.MainViewModel { *; }
+-keep class com.bushop.ui.screens.MainViewModel$Factory { *; }
 -keepclassmembers class * extends androidx.lifecycle.ViewModel {
     <init>(...);
 }
@@ -49,8 +49,8 @@
     @com.google.gson.annotations.SerializedName <fields>;
 }
 # Keep our Gson provider and storage classes
--keep class com.bushop.sg.data.local.BusStopStorage { *; }
--keep class com.bushop.sg.data.api.GsonProvider { *; }
+-keep class com.bushop.data.local.BusStopStorage { *; }
+-keep class com.bushop.data.api.GsonProvider { *; }
 # Prevent R8 from stripping generic type info from any method that uses Gson types
 -keepclassmembers class * {
     @com.google.gson.annotations.Expose <fields>;
