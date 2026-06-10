@@ -116,18 +116,17 @@ Or [build from source](#build-from-source) for a debug APK.
 
 ## Testing
 
-**154 tests** across 8 test files:
+**154 tests** (151 unit + 3 instrumentation) across 9 test files:
 
 | Module                        | Tests | What's covered                                                              |
 | ----------------------------- | ----- | --------------------------------------------------------------------------- |
-| Domain: UseCase               | 22    | sortServices, sortServicesWithPins, applyPinning, toggleCollapsed           |
-| Domain: Model                 | 10    | toDisplayArrival eta/load/busType mapping                                   |
+| Domain: BusStopUseCase        | 28    | sortServices, sortServicesWithPins, applyPinning, toggleCollapsed           |
+| Domain: Model                 | 8     | toDisplayArrival eta/load/busType mapping                                   |
 | Domain: RefreshCoordinator    | 6     | Cooldown, independent cooldowns, concurrent batching                        |
 | Domain: AutoRefreshController | 7     | Start/stop/restart/onCleared lifecycle                                      |
-| Domain: BusStopUseCase        | 4     | addFavoriteStop, removeFavoriteStop, getSavedStops, refresh                 |
 | Data: BusStopIndex            | 45    | TokenTrie search (exact, prefix, fuzzy, abbreviations, sorting, findNearby) |
 | Data: RetryUtil               | 6     | Retry with backoff, CancellationException propagation                       |
-| App: MainViewModel            | 50+   | add/remove/move/pin/collapse/refresh/sort/errors                            |
+| App: MainViewModel            | 47    | add/remove/move/pin/collapse/refresh/sort/errors                            |
 | App: Architecture             | 4     | Layer separation, minification, dependency rules, ProGuard                  |
 
 ## API

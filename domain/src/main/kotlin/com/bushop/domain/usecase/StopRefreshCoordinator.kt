@@ -5,14 +5,15 @@ import kotlinx.coroutines.awaitAll
 import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
+import java.util.concurrent.ConcurrentHashMap
 
 /** Manages per-stop cooldown and concurrency for refresh operations. */
 class StopRefreshCoordinator(
     private val cooldownMs: Long = 30_000L,
     private val maxConcurrent: Int = 5,
 ) {
-    private val lastRefreshTimestamps = mutableMapOf<String, Long>()
-    private val refreshMutexes = mutableMapOf<String, Mutex>()
+    private val lastRefreshTimestamps = ConcurrentHashMap<String, Long>()
+    private val refreshMutexes = ConcurrentHashMap<String, Mutex>()
 
     private fun cooldownMutex(code: String): Mutex = refreshMutexes.getOrPut(code) { Mutex() }
 

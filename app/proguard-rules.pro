@@ -86,7 +86,6 @@
 
 # ── Kotlin stdlib keep (required for some inline functions in R8 full mode) ──
 -keepclassmembers class kotlin.Metadata { *; }
--dontwarn kotlin.**
 
-# ── DataStore / Preferences (used via reflection in some configurations) ──
--keep class * extends androidx.datastore.preferences.core.Preferences { *; }
+# Suppress specific Kotlin warnings only (not all of kotlin.**)
+-dontwarn kotlin.internal.jdk8.*

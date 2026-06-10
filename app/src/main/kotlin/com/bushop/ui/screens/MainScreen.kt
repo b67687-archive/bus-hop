@@ -407,15 +407,7 @@ fun MainScreen(viewModel: MainViewModel) {
                                     val isNewlyAdded = stopWithArrivals.busStop.code == newStopCode
                                     BusStopCard(
                                         isNewlyAdded = isNewlyAdded,
-                                        modifier =
-                                            Modifier.animateItem(
-                                                placementSpec =
-                                                    if (draggedCode == stopWithArrivals.busStop.code) {
-                                                        tween(durationMillis = 0)
-                                                    } else {
-                                                        tween(durationMillis = 0)
-                                                    },
-                                            ),
+                                        modifier = Modifier.animateItem(placementSpec = tween(durationMillis = 0)),
                                         stop = stopWithArrivals,
                                         onRefresh = remember(stopCode) { { viewModel.refreshArrivals(stopCode) } },
                                         onToggleCollapse = remember(stopCode) { { viewModel.toggleCollapse(stopCode) } },

@@ -40,6 +40,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.window.Dialog
 import androidx.compose.ui.window.DialogProperties
 import com.bushop.data.local.BusStopEntry
+import kotlinx.coroutines.delay
 
 @Composable
 fun AddBusStopDialog(
@@ -61,9 +62,11 @@ fun AddBusStopDialog(
     var confirmNearby by remember { mutableStateOf<BusStopEntry?>(null) }
     val displayError = error ?: nearbyError
 
-    // Search fires on every keystroke — TokenTrie is O(k), no network call, no lag
+    // Search fires 100ms after the user stops typing (prevents CPU spikes on slow devices
+    // while staying imperceptible — human visual reaction is ~200ms)
     LaunchedEffect(searchQuery) {
         if (searchQuery.length >= 1) {
+            delay(100)
             onSearchQueryChanged(searchQuery.trim())
         }
     }
