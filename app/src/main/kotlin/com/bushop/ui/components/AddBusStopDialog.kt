@@ -32,8 +32,8 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
-import androidx.compose.ui.unit.DialogProperties
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.window.DialogProperties
 import com.bushop.data.local.BusStopEntry
 
 @Composable
