@@ -52,7 +52,7 @@ Thumbs.db
 
 # Proguard
 proguard/
-*.pro
+proguard/*.pro
 
 # AI / workspace meta (not part of the Android project)
 .claude/

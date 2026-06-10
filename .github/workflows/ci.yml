@@ -27,7 +27,7 @@ jobs:
               run: |
                   TAG="${GITHUB_REF#refs/tags/}"
                   if [ "$TAG" != "$GITHUB_REF" ]; then
-                    VERSION=$(grep versionName app/build.gradle.kts | sed 's/.*"\(.*\)".*/\1/')
+                    VERSION=$(grep 'versionName\s*=' app/build.gradle.kts | sed 's/.*"\(.*\)".*/\1/')
                     EXPECTED="${TAG#v}"
                     if [ "$VERSION" != "$EXPECTED" ]; then
                       echo "❌ Tag $TAG but build.gradle.kts says $VERSION"

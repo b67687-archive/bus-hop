@@ -31,8 +31,9 @@
 | 🚍  | **Bus type icons**       | Single Decker, Double Decker, Bendy                                                              |
 | 💺  | **Load indicator**       | Seats Available / Standing Available / Limited Standing                                          |
 | ♿  | **Wheelchair info**      | Wheelchair Accessible Bus (WAB) indicator                                                        |
-| 📌  | **Pin stops & services** | Pin stops to the top; pin individual bus services within a stop                                  |
+| 📌  | **Pin stops & services** | Pin stops to the top; pin individual bus services within a stop. Survives restarts now.          |
 | 🔍  | **Smart search**         | TokenTrie O(k) prefix search + Levenshtein fuzzy matching over 5,201 stops — instant, no network |
+| ✨  | **New stop pulse**       | List auto-scrolls to newly added stop with a brief blue pulse highlight                          |
 | 📍  | **Nearby stops**         | Location-based nearby stop finder (opt-in)                                                       |
 | 💡  | **Random hints**         | Truly random bus stop hint shown every time you open the search dialog (from all 5,201 stops)    |
 | 🌙  | **Theme support**        | Light, Dark, System-following, with Blue and Contrast Blue colour schemes — all persisted        |

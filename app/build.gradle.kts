@@ -148,6 +148,4 @@ dependencies {
 }
 
 // ── Auto-run APK verification after every assembleDebug ──
-afterEvaluate {
-    tasks.named("assembleDebug") { finalizedBy("checkAndRenameDebugApk") }
-}
+tasks.named("assembleDebug") { finalizedBy("checkAndRenameDebugApk") }

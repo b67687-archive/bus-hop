@@ -293,11 +293,6 @@ class MainViewModel(
             }
         }
         viewModelScope.launch {
-            repository.pinnedServicesFlow.collect { pinned ->
-                _pinnedServices.value = pinned
-            }
-        }
-        viewModelScope.launch {
             repository.pinnedStopsFlow.collect { pinned ->
                 _pinnedStops.value = pinned
             }
