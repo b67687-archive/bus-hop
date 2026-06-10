@@ -61,34 +61,34 @@ Or [build from source](#build-from-source) for a debug APK.
 <img src="pipeline.svg" alt="Development pipeline" width="800">
 
 1. **Development** — Code written iteratively by AI agent + human review. Source, tests, and config live in `main`.
-2. **CI** — Every push triggers linting, 154 unit tests, and architecture boundary checks via GitHub Actions.
+2. **CI** — Every push triggers linting, 154+ unit tests, and architecture boundary checks via GitHub Actions.
 3. **Build** — Gradle compiles Kotlin, R8 minifies + optimizes the release APK down to ~2 MB (vs 18 MB debug).
-4. **Release** — APK is SSH-signed, published as a GitHub Release, and distributed via Obtainium for automatic updates.
-5. **History** — `git filter-repo` periodically cleans agent tooling artifacts (workflows, session state) from git history, keeping only app-relevant commits.
+4. **Release** — APK is signed, published as a GitHub Release, and distributed via Obtainium for automatic updates.
+5. **History** — `git filter-repo` removed agent tooling artifacts from git history post-launch.
 
 ## Tech Stack
 
 | Layer         | Technology                                                |
 | ------------- | --------------------------------------------------------- |
-| Language      | Kotlin 2.0                                                |
-| UI            | Jetpack Compose (BOM 2024.10) + Material 3                |
+| Language      | Kotlin 2.1                                                |
+| UI            | Jetpack Compose (BOM 2025.01) + Material 3                |
 | Architecture  | MVVM + Clean Architecture (3 modules)                     |
 | Networking    | Retrofit 2 + OkHttp 4                                     |
 | Serialization | Gson (data layer only)                                    |
 | Persistence   | DataStore Preferences                                     |
-| Async         | Kotlin Coroutines 1.8 + Flow                              |
+| Async         | Kotlin Coroutines 1.9 + Flow                              |
 | DI            | Manual constructor injection                              |
 | Search        | Inverted index + TokenTrie (prefix) + Levenshtein (fuzzy) |
 | Testing       | JUnit 4, MockK, Coroutines Test                           |
 | Minification  | R8 + ProGuard (release builds)                            |
-| Target        | Android 14 (SDK 34), min SDK 24                           |
+| Target        | Android 15 (SDK 35), min SDK 24                           |
 
 ## Build from Source
 
 ### Prerequisites
 
 - **JDK 17** (OpenJDK)
-- **Android SDK 34** with build tools
+- **Android SDK 35** with build tools
 - Set `ANDROID_HOME` to your SDK path
 
 ### Commands
