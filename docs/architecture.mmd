@@ -1,0 +1,31 @@
+flowchart TB
+    subgraph domain["domain/ — Pure Kotlin"]
+        direction TB
+        UC["UseCases"]
+        IFACE["Repository Interface"]
+        MODELS["Models (no deps)"]
+    end
+
+    subgraph app["app/ — Android App"]
+        direction TB
+        UI["UI (Compose)"]
+        VM["ViewModel (State)"]
+        C["Components (Theme, Dialogs)"]
+    end
+
+    subgraph data["data/ — Data Layer"]
+        direction TB
+        API["API (Retrofit + Arrivelah)"]
+        REPO["BusRepositoryImpl"]
+        LOCAL["Local (DataStore + Index)"]
+        TRIE["TokenTrie (Search Index)"]
+    end
+
+    UI --> VM
+    VM --> C
+    VM --> UC
+    UC --> IFACE
+    IFACE --> REPO
+    API --> REPO
+    LOCAL --> REPO
+    TRIE --> LOCAL
