@@ -20,7 +20,7 @@
 | Main Screen                                        | Drag to reorder                                            | Delete zone                                      | Search & Add                                            |
 | -------------------------------------------------- | ---------------------------------------------------------- | ------------------------------------------------ | ------------------------------------------------------- |
 | _Bus stop list with arrivals, pinned stops at top_ | _Long-press a stop, drag to reposition, release to commit_ | _Drag into the red zone at the bottom to delete_ | _Type-stop search with fuzzy matching and nearby stops_ |
-| _(screenshot needed)_                              | _(screenshot needed)_                                      | _(screenshot needed)_                            | _(screenshot needed)_                                   |
+| ![Main screen](screenshot_stops.png)               | _(screenshot needed)_                                      | _(screenshot needed)_                            | ![Search dialog](screenshot_search.png)                 |
 
 ## Features
 
