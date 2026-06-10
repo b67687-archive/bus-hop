@@ -81,32 +81,7 @@ graph TD
 
 ## Pipeline
 
-```mermaid
-graph LR
-    subgraph Development
-        A[AI Agent / Dev] --> B[Source Code]
-    end
-
-    subgraph CI[GitHub Actions]
-        C --> D[Lint]
-        C --> E[154 Tests]
-        C --> F[Architecture Check]
-    end
-
-    subgraph Build
-        B --> C[Gradle Build]
-        F --> G[R8 Minification]
-        E --> G
-        G --> H[Release APK\n~2 MB]
-    end
-
-    subgraph Release
-        H --> I[SSH Signing]
-        I --> J[GitHub Release]
-        J --> K[Obtainium]
-        K --> L[User Device]
-    end
-```
+<img src="pipeline.svg" alt="Development pipeline" width="800">
 
 1. **Development** — Code written iteratively by AI agent + human review. Source, tests, and config live in `main`.
 2. **CI** — Every push triggers linting, 154 unit tests, and architecture boundary checks via GitHub Actions.
