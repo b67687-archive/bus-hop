@@ -353,12 +353,11 @@ class MainViewModel(
     fun showAddStopDialog() {
         addStopError = null
         addStopDialogVisible = true
-        // Pick a random stop from the index once it's loaded
+        // Pick a random stop from the index once it's loaded (no copy, O(1))
         viewModelScope.launch {
             busStopIndex.isReady.first { it }
-            val entries = busStopIndex.allEntries()
-            if (entries.isNotEmpty()) {
-                randomHint = with(entries.random()) { "$code ($name)" }
+            busStopIndex.randomEntry()?.let {
+                randomHint = "${it.code} (${it.name})"
             }
         }
     }

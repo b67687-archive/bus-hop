@@ -10,6 +10,7 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.withContext
 import kotlin.math.pow
+import kotlin.random.Random
 
 data class BusStopEntry(
     val code: String,
@@ -476,6 +477,13 @@ class BusStopIndex(
     }
 
     fun findByCode(code: String): BusStopEntry? = stops[code]
+
+    /** Returns a single random entry without copying the entire collection. */
+    fun randomEntry(): BusStopEntry? {
+        if (stops.isEmpty()) return null
+        val keys = stops.keys
+        return stops[keys.elementAt(Random.nextInt(keys.size))]
+    }
 
     fun allEntries(): List<BusStopEntry> = stops.values.toList()
 
