@@ -17,7 +17,7 @@
 # Retrofit's HttpServiceMethod does an unchecked (ParameterizedType) cast on
 # getGenericParameterTypes().last() — if R8 strips the Signature attribute,
 # getGenericParameterTypes() returns raw Class instead of ParameterizedType.)
--keep,allowobfuscation interface com.bushop.sg.data.api.ArrivelahApi { *; }
+-keep interface com.bushop.sg.data.api.ArrivelahApi { *; }
 
 # ── ViewModel ──
 -keep class * extends androidx.lifecycle.ViewModel { *; }
@@ -72,6 +72,10 @@
 # ── OkHttp services (ServiceLoader for Conscrypt/BouncyCastle) ──
 -keepnames class okhttp3.internal.publicsuffix.PublicSuffixDatabase
 -dontnote okhttp3.internal.platform.**
+
+# ── Kotlin coroutines Continuation (preserve generic type param for Retrofit reflection) ──
+-keepattributes Signature
+-keep class kotlin.coroutines.Continuation { *; }
 
 # ── Coroutine internals (required for R8 full mode) ──
 -keepnames class kotlinx.coroutines.internal.MainDispatcherFactory {}
