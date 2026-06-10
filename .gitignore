@@ -76,7 +76,6 @@ audit-folder-quality.ps1
 opencode-agent-system.md
 opencode.json
 meta/
-docs/
 build.bat
 
 # Project subdir (synced to root, keep root as source of truth)
