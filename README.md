@@ -17,10 +17,10 @@
 
 ## Screenshots
 
-| Stops list                                       | Expanded stop                                   | Search dialog                                 | Dark mode                              |
-| ------------------------------------------------ | ----------------------------------------------- | --------------------------------------------- | -------------------------------------- |
-| _Pinned stops at top, arrivals, pull-to-refresh_ | _All services with operator badges and timings_ | _TokenTrie O(k) search — instant, no network_ | _Auto-follows system or manual toggle_ |
-| `docs/screenshots/screenshot_main.png`           | `docs/screenshots/screenshot_expanded.png`      | `docs/screenshots/screenshot_search.png`      | `docs/screenshots/screenshot_dark.png` |
+| Stops list                                          | Expanded stop                                              | Search dialog                                            |
+| --------------------------------------------------- | ---------------------------------------------------------- | -------------------------------------------------------- |
+| _Pinned stops at top, arrivals, pull-to-refresh_    | _All services with operator badges and timings_            | _TokenTrie O(k) search — instant, no network_            |
+| ![Stops list](docs/screenshots/screenshot_main.png) | ![Expanded stop](docs/screenshots/screenshot_expanded.png) | ![Search dialog](docs/screenshots/screenshot_search.png) |
 
 ## Features
 
@@ -147,4 +147,3 @@ BusHop uses the [Arrivelah](https://github.com/cheeaun/arrivelah) API (`arrivela
 ## License
 
 MIT License — see [LICENSE](LICENSE).
-
