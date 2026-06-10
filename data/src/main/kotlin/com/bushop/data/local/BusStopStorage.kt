@@ -29,7 +29,7 @@ class BusStopStorage(
 ) {
     companion object {
         private const val CACHE_TTL_MS = 24 * 60 * 60 * 1000L // 24 hours
-        private const val MAX_SAVED_STOPS = 25
+        private const val MAX_SAVED_STOPS = 15
 
         // Use getParameterized() instead of anonymous TypeToken subclasses —
         // R8 cannot strip generic signatures from direct API calls.

@@ -4,7 +4,50 @@ plugins {
     alias(libs.plugins.kotlin.compose)
 }
 
+import java.io.File
 import java.util.zip.ZipFile
+import org.gradle.api.file.DirectoryProperty
+import org.gradle.api.tasks.InputFiles
+import org.gradle.api.tasks.TaskAction
+
+abstract class CheckAndRenameDebugApk : DefaultTask() {
+    @get:InputFiles
+    abstract val outputDir: DirectoryProperty
+
+    @TaskAction
+    fun verifyAndRename() {
+        val apkDir = outputDir.get().asFile
+        val apk =
+            apkDir
+                .listFiles { f -> f.name.endsWith(".apk") }
+                ?.filterNot { n -> n.name.contains("unsigned", ignoreCase = true) }
+                ?.filter { n -> n.length() > 1_000_000 }
+                ?.maxByOrNull { n -> n.lastModified() }
+                ?: throw GradleException("No valid debug APK found in $apkDir (all candidates < 1 MB — run clean)")
+
+        val totalBytes = apk.length()
+        val zf = ZipFile(apk)
+        val hasManifest = zf.getEntry("AndroidManifest.xml") != null
+        val fileCount = zf.size()
+        zf.close()
+
+        if (!hasManifest) {
+            throw GradleException(
+                "APK $apk CORRUPTED: no AndroidManifest.xml (${totalBytes / 1024} KB, $fileCount files). " +
+                    "Run \"./gradlew clean assembleDebug\" first.",
+            )
+        }
+
+        val targetName = "bus-hop.apk"
+        if (apk.name != targetName) {
+            val renamed = File(apkDir, targetName)
+            apk.renameTo(renamed)
+            logger.lifecycle("APK renamed: ${renamed.name} (${renamed.length() / 1024} KB, $fileCount entries ✓)")
+        } else {
+            logger.lifecycle("APK verified: ${apk.name} (${totalBytes / 1024} KB, $fileCount entries ✓)")
+        }
+    }
+}
 
 android {
     namespace = "com.bushop"
@@ -66,46 +109,9 @@ android {
 }
 
 /** Locate the debug APK, verify it has an AndroidManifest, then rename predictably. */
-tasks.register("checkAndRenameDebugApk") {
+tasks.register<CheckAndRenameDebugApk>("checkAndRenameDebugApk") {
+    outputDir.set(layout.buildDirectory.dir("outputs/apk/debug"))
     dependsOn("assembleDebug")
-    doLast {
-        val apkDir =
-            layout.buildDirectory
-                .dir("outputs/apk/debug")
-                .get()
-                .asFile
-        val apk =
-            apkDir
-                .listFiles { f -> f.name.endsWith(".apk") }
-                ?.filterNot { n -> n.name.contains("unsigned", ignoreCase = true) }
-                ?.filter { n -> n.length() > 1_000_000 } // ignore stale artifacts < 1 MB
-                ?.maxByOrNull { n -> n.lastModified() }
-                ?: throw GradleException("No valid debug APK found in $apkDir (all candidates < 1 MB — run clean)")
-
-        val totalBytes = apk.length()
-
-        // Verify APK has an AndroidManifest.xml using standard ZipFile (config-cache compatible)
-        val zipFile = ZipFile(apk)
-        val hasManifest = zipFile.getEntry("AndroidManifest.xml") != null
-        val fileCount = zipFile.size()
-        zipFile.close()
-
-        if (!hasManifest) {
-            throw GradleException(
-                "APK $apk CORRUPTED: no AndroidManifest.xml (${totalBytes / 1024} KB, $fileCount files). " +
-                    "Run \"./gradlew clean assembleDebug\" first.",
-            )
-        }
-
-        val targetName = "bus-hop.apk"
-        if (apk.name != targetName) {
-            val renamed = File(apkDir, targetName)
-            apk.renameTo(renamed)
-            logger.lifecycle("APK renamed: ${renamed.name} (${renamed.length() / 1024} KB, $fileCount entries ✓)")
-        } else {
-            logger.lifecycle("APK verified: ${apk.name} (${totalBytes / 1024} KB, $fileCount entries ✓)")
-        }
-    }
 }
 
 dependencies {

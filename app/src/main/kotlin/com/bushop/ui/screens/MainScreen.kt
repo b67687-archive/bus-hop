@@ -191,6 +191,20 @@ fun MainScreen(viewModel: MainViewModel) {
     val scrollBehavior = TopAppBarDefaults.pinnedScrollBehavior()
     val pullToRefreshState = rememberPullToRefreshState()
 
+    val newStopCode by viewModel.recentlyAddedStop.collectAsState()
+
+    // Scroll to and highlight newly added stop
+    LaunchedEffect(newStopCode) {
+        if (newStopCode != null) {
+            val index = savedStops.indexOfFirst { it.busStop.code == newStopCode }
+            if (index >= 0) {
+                listState.animateScrollToItem(index)
+            }
+            kotlinx.coroutines.delay(2000)
+            viewModel.clearNewStopHighlight()
+        }
+    }
+
     var deleteTarget by remember { mutableStateOf<String?>(null) }
 
     // Drag state
@@ -390,7 +404,9 @@ fun MainScreen(viewModel: MainViewModel) {
                                     key = { it.busStop.code },
                                 ) { stopWithArrivals ->
                                     val stopCode = stopWithArrivals.busStop.code
+                                    val isNewlyAdded = stopWithArrivals.busStop.code == newStopCode
                                     BusStopCard(
+                                        isNewlyAdded = isNewlyAdded,
                                         modifier =
                                             Modifier.animateItem(
                                                 placementSpec =

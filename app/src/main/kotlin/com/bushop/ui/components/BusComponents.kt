@@ -23,6 +23,7 @@ import androidx.compose.foundation.layout.ExperimentalLayoutApi
 import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
@@ -60,6 +61,7 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.drawWithContent
 import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.graphicsLayer
@@ -84,6 +86,7 @@ private const val COLLAPSE_PROPAGATION_MS = 50L
 @Composable
 fun BusStopCard(
     stop: BusStopWithArrivals,
+    isNewlyAdded: Boolean = false,
     onRefresh: () -> Unit,
     onToggleCollapse: () -> Unit,
     onTogglePin: () -> Unit,
@@ -120,6 +123,21 @@ fun BusStopCard(
         label = "dragScale",
     )
 
+    // Pulse highlight for newly added stop
+    var isPulsing by remember { mutableStateOf(false) }
+    LaunchedEffect(isNewlyAdded) {
+        if (isNewlyAdded) {
+            isPulsing = true
+            kotlinx.coroutines.delay(1500)
+            isPulsing = false
+        }
+    }
+    val pulseAlpha by animateFloatAsState(
+        targetValue = if (isPulsing) 1f else 0f,
+        animationSpec = tween(durationMillis = 800),
+        label = "pulseAlpha",
+    )
+
     Card(
         modifier =
             modifier
@@ -154,7 +172,18 @@ fun BusStopCard(
         border = if (isPinned) BorderStroke(2.dp, MaterialTheme.colorScheme.primary) else null,
         elevation = CardDefaults.cardElevation(defaultElevation = if (visuallyDragged) 12.dp else 3.dp),
     ) {
-        Column {
+        Column(
+            modifier =
+                Modifier.drawWithContent {
+                    drawContent()
+                    if (pulseAlpha > 0.001f) {
+                        drawRect(
+                            color = MaterialTheme.colorScheme.primary.copy(alpha = pulseAlpha * 0.2f),
+                            size = size,
+                        )
+                    }
+                },
+        ) {
             // ── Header background (pinned = blue pill, unpinned = none) ──
             Row(
                 modifier =

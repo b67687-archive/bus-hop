@@ -138,6 +138,13 @@ class MainViewModel(
 
     private var additionOrder: List<String> = emptyList()
 
+    private val _recentlyAddedStop = MutableStateFlow<String?>(null)
+    val recentlyAddedStop: StateFlow<String?> = _recentlyAddedStop.asStateFlow()
+
+    fun clearNewStopHighlight() {
+        _recentlyAddedStop.value = null
+    }
+
     // ── Nearby stops ──
 
     var nearbyStops by mutableStateOf<List<BusStopEntry>>(emptyList())
@@ -425,6 +432,7 @@ class MainViewModel(
                 collapseStop(formattedCode)
                 addStopIsLoading = false
                 hideAddStopDialog()
+                _recentlyAddedStop.value = formattedCode
             } else {
                 addStopError = "Invalid bus stop code"
             }
