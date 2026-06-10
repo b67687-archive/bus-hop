@@ -138,14 +138,17 @@ class MainViewModelTest {
         }
 
     @Test
-    fun `addBusStop with empty services shows error`() =
+    fun `addBusStop with empty services still adds stop`() =
         runTest(testDispatcher) {
             coEvery { repository.getBusArrivals("12345") } returns NetworkResult.Success(emptyList())
+            coEvery { repository.addBusStop(any()) } returns Result.success(Unit)
 
             viewModel.addBusStop("12345")
             advanceUntilIdle()
 
-            assertNotNull("Error should be set when no services found", viewModel.addStopError)
+            assertNull("No error when no services (stop added anyway)", viewModel.addStopError)
+            assertFalse(viewModel.addStopIsLoading)
+            assertFalse("Dialog should be hidden", viewModel.addStopDialogVisible)
         }
 
     @Test
